@@ -67,6 +67,18 @@ class Settings(BaseSettings):
     # Jumbo Argentina (VTEX — Cencosud)
     JUMBO_API_URL: str   = "https://jumboargentina.vtexcommercestable.com.br"
     JUMBO_STORE_URL: str = "https://www.jumbo.com.ar"
+
+    # Día Argentina (VTEX)
+    DIA_API_URL: str   = "https://diaio.vtexcommercestable.com.br"
+    DIA_STORE_URL: str = "https://diaonline.supermercadosdia.com.ar"
+
+    # La Anónima (API propia)
+    LA_ANONIMA_API_URL: str   = "https://api.laanonima.com.ar"
+    LA_ANONIMA_STORE_URL: str = "https://www.laanonima.com.ar"
+
+    # Chango Más / MasOnline (VTEX — GDN Argentina)
+    CHANGO_MAS_API_URL: str   = "https://www.masonline.com.ar"
+    CHANGO_MAS_STORE_URL: str = "https://www.masonline.com.ar"
     
     # Logging
     LOG_LEVEL: str = "INFO"

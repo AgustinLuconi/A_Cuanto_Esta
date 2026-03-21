@@ -19,6 +19,9 @@ class Supermarket(str, enum.Enum):
     ATOMO = "atomo"
     VEA   = "vea"
     JUMBO = "jumbo"
+    DIA        = "dia"
+    LA_ANONIMA = "la_anonima"
+    CHANGO_MAS = "chango_mas"
 
 
 class PriceHistory(Base):
@@ -49,7 +52,13 @@ class PriceHistory(Base):
     
     # Disponibilidad
     in_stock = Column(Boolean, default=True)
-    
+
+    # Ubicación geográfica (String para flexibilidad — validación via enums Python)
+    province = Column(String(50), nullable=True, index=True)
+    city = Column(String(100), nullable=True)
+    region = Column(String(50), nullable=True, index=True)
+    store_id = Column(String(100), nullable=True)
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
@@ -60,6 +69,8 @@ class PriceHistory(Base):
     __table_args__ = (
         Index('idx_product_supermarket_date', 'product_id', 'supermarket', 'scraped_at'),
         Index('idx_supermarket_date', 'supermarket', 'scraped_at'),
+        Index('idx_price_province_date', 'province', 'scraped_at'),
+        Index('idx_price_region_supermarket', 'region', 'supermarket'),
     )
     
     def __repr__(self):

@@ -16,6 +16,9 @@ class BaseScraper(ABC):
         self.session.headers.update({"User-Agent": settings.USER_AGENT})
         self.delay = settings.SCRAPING_DELAY
         self.timeout = settings.SCRAPING_TIMEOUT
+        self.default_province = None
+        self.default_region = None
+        self.default_city = None
 
     def _get(self, url: str, params: dict = None) -> dict | None:
         """GET con manejo de errores y delay post-request."""

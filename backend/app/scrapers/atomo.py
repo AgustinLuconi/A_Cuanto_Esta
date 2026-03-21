@@ -30,6 +30,9 @@ class AtomoScraper(BaseScraper):
     def __init__(self):
         super().__init__()
         self.session.headers.update({"X-Requested-With": "XMLHttpRequest"})
+        self.default_province = "mendoza"
+        self.default_region = "cuyo"
+        self.default_city = "Mendoza"
 
     def search(self, query: str, page: int = 1) -> dict | None:
         """Llama al endpoint AJAX de búsqueda de PrestaShop."""
@@ -124,6 +127,9 @@ class AtomoScraper(BaseScraper):
             discount_percentage=product_data.get("discount_percentage"),
             url=product_data.get("url"),
             in_stock=product_data["in_stock"],
+            province=self.default_province,
+            region=self.default_region,
+            city=self.default_city,
         ))
         return is_new
 

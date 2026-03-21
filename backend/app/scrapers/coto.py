@@ -135,6 +135,9 @@ class CotoScraper(BaseScraper):
             discount_percentage=product_data.get("discount_percentage"),
             url=product_data.get("url"),
             in_stock=product_data["in_stock"],
+            province=self.default_province,
+            region=self.default_region,
+            city=self.default_city,
         ))
         return is_new
 
