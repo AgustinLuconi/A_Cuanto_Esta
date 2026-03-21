@@ -43,6 +43,12 @@ _CATEGORY_MAP: dict[str, ProductCategory] = {
     "harinas": ProductCategory.ALIMENTOS,
     "pastas": ProductCategory.ALIMENTOS,
     "conservas": ProductCategory.ALIMENTOS,
+    # Categorías específicas de VTEX Carrefour
+    "almacen": ProductCategory.ALIMENTOS,
+    "almacén": ProductCategory.ALIMENTOS,
+    "desayuno y merienda": ProductCategory.DESAYUNO,
+    "panificacion": ProductCategory.PANADERIA,
+    "panificación": ProductCategory.PANADERIA,
 }
 
 # Mapeo de formato de Coto → ProductUnit

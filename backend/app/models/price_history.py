@@ -16,6 +16,9 @@ class Supermarket(str, enum.Enum):
     CARREFOUR = "carrefour"
     COTO = "coto"
     DISCO = "disco"
+    ATOMO = "atomo"
+    VEA   = "vea"
+    JUMBO = "jumbo"
 
 
 class PriceHistory(Base):

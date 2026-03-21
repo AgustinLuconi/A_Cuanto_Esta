@@ -51,6 +51,22 @@ class Settings(BaseSettings):
     COTO_BASE_URL: str = "https://www.cotodigital.com.ar"
     CONSTRUCTOR_API_URL: str = "https://ac.cnstrc.com"
     COTO_CONSTRUCTOR_KEY: str = "key_r6xzz4IAoTWcipni"
+
+    # Carrefour Argentina (VTEX)
+    CARREFOUR_API_URL: str = "https://carrefourar.vtexcommercestable.com.br"
+    CARREFOUR_STORE_URL: str = "https://www.carrefour.com.ar"
+
+    # Vea Argentina (VTEX — mismo grupo Cencosud que Disco)
+    VEA_API_URL: str   = "https://veaargentina.vtexcommercestable.com.br"
+    VEA_STORE_URL: str = "https://www.vea.com.ar"
+
+    # Disco Argentina (VTEX — Cencosud)
+    DISCO_API_URL: str   = "https://discoargentina.vtexcommercestable.com.br"
+    DISCO_STORE_URL: str = "https://www.disco.com.ar"
+
+    # Jumbo Argentina (VTEX — Cencosud)
+    JUMBO_API_URL: str   = "https://jumboargentina.vtexcommercestable.com.br"
+    JUMBO_STORE_URL: str = "https://www.jumbo.com.ar"
     
     # Logging
     LOG_LEVEL: str = "INFO"
