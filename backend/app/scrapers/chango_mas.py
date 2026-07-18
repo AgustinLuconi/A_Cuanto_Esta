@@ -22,3 +22,4 @@ class ChangoMasScraper(CarrefourScraper):
         self.search_url       = f"{settings.CHANGO_MAS_API_URL}{_VTEX_SEARCH_PATH}"
         self.store_url        = settings.CHANGO_MAS_STORE_URL
         self.supermarket_enum = Supermarket.CHANGO_MAS
+        self.delay            = 4  # MasOnline tiene rate limits más agresivos

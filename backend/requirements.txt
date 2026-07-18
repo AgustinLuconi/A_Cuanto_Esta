@@ -12,6 +12,9 @@ psycopg2-binary>=2.9.9
 pydantic>=2.10.0
 pydantic-settings>=2.5.0
 
+# Fuzzy matching
+rapidfuzz>=3.0
+
 # Web Scraping
 beautifulsoup4==4.12.3
 selenium==4.17.2
@@ -39,6 +42,10 @@ loguru==0.7.2
 
 # CORS
 python-jose[cryptography]==3.3.0
+
+# Procesamiento de imágenes
+Pillow>=10.0
+cairosvg>=2.7
 
 # Opcional: para scraping avanzado
 playwright>=1.41.0

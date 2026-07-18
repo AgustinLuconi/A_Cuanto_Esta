@@ -4,15 +4,32 @@ Scraper de La Anónima via API propia.
 La Anónima usa una API REST propia (no VTEX). No expone EAN/barcode —
 los productos se identifican por codAnonima (ID interno), prefijado con
 "la_anonima_" para evitar colisiones con otros supermercados.
+
+Nota: La API devuelve {"redirectUrl": "..."} para algunos términos genéricos
+(ej. "leche", "aceite"). Para esos casos usar términos más específicos.
+Los precios de la API pueden contener valores corruptos de períodos anteriores —
+se filtran con MIN_VALID_PRICE / MAX_VALID_PRICE.
 """
 from app.config.settings import settings
-from app.models.product import Product, ProductUnit
+from app.models.product import ProductUnit
 from app.models.price_history import PriceHistory, Supermarket
 from app.scrapers.base import BaseScraper
 from app.scrapers.utils.normalizer import normalize_product_name, map_category
 
 PER_PAGE = 20
 _SEARCH_PATH = "/catalogo/buscador"
+
+MIN_VALID_PRICE = 200.0
+MAX_VALID_PRICE = 150_000.0
+
+DEFAULT_SEARCH_TERMS = [
+    "leche entera", "leche descremada", "sachet leche",
+    "yogur", "queso", "margarina",
+    "arroz", "fideos", "harina 0000", "aceite girasol", "aceite oliva",
+    "azucar", "sal", "galletitas", "mermelada",
+    "cafe", "yerba", "agua", "gaseosa", "jugo",
+    "detergente", "jabon",
+]
 
 
 class LaAnonimaScraper(BaseScraper):
@@ -32,9 +49,12 @@ class LaAnonimaScraper(BaseScraper):
     def search(self, query: str, pagina: int = 1) -> list | None:
         """Llama al buscador de La Anónima. Retorna lista de artículos o None."""
         result = self._get(f"{self.search_url}/{query}", params={"pagina": pagina})
-        if isinstance(result, dict):
-            return result.get("articulos") or []
-        return None
+        if not isinstance(result, dict):
+            return None
+        if "redirectUrl" in result:
+            print(f"[{self.name}] '{query}' redirige a {result['redirectUrl']} — término no soportado, omitiendo")
+            return None
+        return result.get("articulos") or []
 
     def parse_product(self, raw: dict) -> dict | None:
         """Convierte un artículo del JSON de La Anónima en el dict normalizado."""
@@ -77,22 +97,12 @@ class LaAnonimaScraper(BaseScraper):
 
     def _save_product(self, db_session, product_data: dict) -> bool:
         """Guarda o actualiza el producto en la BD. Retorna True si es nuevo."""
-        barcode = product_data["barcode"]
-        product = db_session.query(Product).filter_by(barcode=barcode).first()
-        is_new = product is None
-        if is_new:
-            product = Product(
-                name=product_data["name"],
-                normalized_name=product_data["normalized_name"],
-                brand=product_data["brand"],
-                category=product_data["category"],
-                unit=product_data["unit"],
-                barcode=barcode,
-                image_url=product_data["image_url"],
-            )
-            db_session.add(product)
-            db_session.flush()
-
+        product, is_new = self._get_or_create_product(
+            db_session,
+            barcode=product_data["barcode"],
+            store_name=self.name,
+            product_data=product_data,
+        )
         db_session.add(PriceHistory(
             product_id=product.id,
             supermarket=self.supermarket_enum,
@@ -110,8 +120,12 @@ class LaAnonimaScraper(BaseScraper):
 
     def scrape(self, db_session=None, search_terms=None, max_per_term=200) -> int:
         if search_terms is None:
-            search_terms = ["leche"]
+            search_terms = DEFAULT_SEARCH_TERMS
         total_new = 0
+        # Evita guardar el mismo producto dos veces en la misma sesión de scraping.
+        # Un producto puede aparecer en múltiples términos de búsqueda; sin esto
+        # se insertarían N registros idénticos con precios potencialmente distintos.
+        seen_barcodes: set[str] = set()
 
         for term in search_terms:
             pagina = 1
@@ -130,6 +144,14 @@ class LaAnonimaScraper(BaseScraper):
                     product_data = self.parse_product(raw)
                     if not product_data:
                         continue
+                    price = product_data["price"]
+                    if not (MIN_VALID_PRICE <= price <= MAX_VALID_PRICE):
+                        print(f"[{self.name}] SKIPPED precio inválido: {product_data['name'][:40]} | ${price:,.2f}")
+                        continue
+                    barcode = product_data["barcode"]
+                    if barcode in seen_barcodes:
+                        continue
+                    seen_barcodes.add(barcode)
                     if db_session:
                         if self._save_product(db_session, product_data):
                             total_new += 1

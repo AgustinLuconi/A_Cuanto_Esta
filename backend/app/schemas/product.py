@@ -56,6 +56,16 @@ class Product(ProductInDB):
         from_attributes = True
 
 
+class ProductList(BaseModel):
+    """Respuesta paginada de productos"""
+    items: list["Product"]
+    total: int
+    skip: int
+    limit: int
+    supermarket_counts: dict[str, int] = Field(default_factory=dict)
+    variation_counts: dict[str, int] = Field(default_factory=dict)
+
+
 class ProductWithPrices(Product):
     """Schema de Producto con precios actuales"""
     current_prices: list = Field(default_factory=list)

@@ -15,6 +15,7 @@ from app.scrapers.utils.normalizer import (
     map_category,
     map_unit,
 )
+from app.utils.location_utils import get_region_from_province
 
 BASE_URL = "https://atomoconviene.com/atomo-ecommerce"
 SEARCH_URL = f"{BASE_URL}/index.php"
@@ -31,7 +32,7 @@ class AtomoScraper(BaseScraper):
         super().__init__()
         self.session.headers.update({"X-Requested-With": "XMLHttpRequest"})
         self.default_province = "mendoza"
-        self.default_region = "cuyo"
+        self.default_region = get_region_from_province(self.default_province)
         self.default_city = "Mendoza"
 
     def search(self, query: str, page: int = 1) -> dict | None:

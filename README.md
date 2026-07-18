@@ -1,184 +1,133 @@
-# 🛒 A Cuanto Está?
+# A Cuanto Esta? - Comparador de Precios Argentina
 
-## Descripción
+Plataforma de comparación de precios en supermercados argentinos con historial de precios y contexto económico en tiempo real (inflación, dólar, UVA).
 
-Plataforma de comparación de precios de productos en supermercados argentinos con análisis de contexto económico en tiempo real.
+## Estado actual
 
-## 🎯 Objetivos del Proyecto
+- **9 supermercados** scrapeando via APIs JSON (sin headless browser)
+- **3,295 productos** unicos en base de datos
+- **5,078 registros** de precio con historial
+- **15,725 indicadores** economicos (inflacion, dolar, UVA, riesgo pais)
+- **13 endpoints** REST funcionando
+- **24.5%** de productos comparables entre 2+ supermercados (matching por EAN/barcode)
 
-- **Comparación de precios**: Precios actuales de productos en múltiples supermercados
-- **Historial de precios**: Seguimiento de evolución de precios en el tiempo
-- **Contexto económico**: Integración con indicadores macroeconómicos (inflación, dólar, UVA)
-- **Análisis inteligente**: Comparación de aumentos vs inflación general
-- **Aprendizaje**: Web scraping, APIs, bases de datos, desarrollo full-stack
+## Supermercados soportados
 
-## 🏗️ Arquitectura
+| Supermercado | Plataforma | Productos | EAN real | Tipo |
+|---|---|---|---|---|
+| Carrefour | VTEX | 568 | Si | Nacional |
+| Coto | Constructor.io | 692 | Si | Nacional |
+| Disco | VTEX (Cencosud) | 549 | Si | Nacional |
+| Vea | VTEX (Cencosud) | 549 | Si | Nacional |
+| Jumbo | VTEX (Cencosud) | 572 | Si | Nacional |
+| Dia | VTEX | 560 | Si | Nacional |
+| Chango Mas | VTEX (GDN/ex-Walmart) | 547 | Si | Nacional |
+| La Anonima | API propia | 266 | No (ID interno) | Nacional |
+| Atomo | PrestaShop AJAX | 557 | Si | Regional (Mendoza) |
 
-### Backend
-- **Framework**: FastAPI (Python)
-- **Base de datos**: PostgreSQL
-- **Web Scraping**: BeautifulSoup4 + Selenium
-- **Automatización**: Celery + Redis
-- **APIs externas**: ArgentinaDatos, Datos.gob.ar
+## Stack tecnologico
 
-### Frontend
-- **Framework**: React
-- **Styling**: Tailwind CSS
-- **Gráficos**: Recharts / Chart.js
-- **State Management**: React Context / Zustand
+**Backend:** Python 3.14, FastAPI, SQLAlchemy, Alembic, PostgreSQL, requests
 
-## 📊 Fuentes de Datos
+**Scraping:** APIs JSON publicas (VTEX, Constructor.io, PrestaShop, custom). No usa Selenium ni headless browser.
 
-### Supermercados (Web Scraping)
-1. Carrefour
-2. Coto Digital
-3. Disco
+**Datos economicos:** ArgentinaDatos API, DolarAPI, Datos.gob.ar
 
-### Datos Económicos (APIs)
-- **ArgentinaDatos API**: Inflación, dólar, tasas, índices
-- **Datos.gob.ar**: IPC por categorías, datos oficiales
+## Instalacion
 
-## 🚀 Características Principales
-
-- ✅ Comparación de precios en tiempo real
-- ✅ Historial de precios con gráficos
-- ✅ Indicadores de tendencia (subió/bajó/estable)
-- ✅ Contexto económico (inflación, dólar)
-- ✅ Análisis: aumento vs inflación general
-- ✅ Conversión a dólar (blue/oficial)
-- ✅ Búsqueda y filtros avanzados
-- ✅ API REST documentada
-
-## 📁 Estructura del Proyecto
-```
-A_Cuanto_Esta?/
-├── backend/           # API FastAPI + Scrapers
-│   ├── app/
-│   │   ├── api/       # Endpoints REST
-│   │   ├── models/    # Modelos SQLAlchemy
-│   │   ├── schemas/   # Schemas Pydantic
-│   │   ├── scrapers/  # Web scrapers
-│   │   ├── services/  # Lógica de negocio
-│   │   └── config/    # Configuración
-│   └── tests/         # Tests unitarios
-├── frontend/          # React app
-└── docs/              # Documentación
-```
-
-## 🛠️ Tecnologías
-
-**Backend:**
-- Python 3.11+
-- FastAPI
-- SQLAlchemy
-- Alembic (migraciones)
-- BeautifulSoup4
-- Selenium
-- Celery
-- Redis
-- PostgreSQL
-
-**Frontend:**
-- React 18
-- Tailwind CSS
-- React Router
-- Recharts
-- Axios
-
-## 📦 Instalación
-
-### Prerrequisitos
-- Python 3.11+
-- PostgreSQL 14+
-- Node.js 18+
-- Redis (para tareas programadas)
-
-### Backend Setup
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus credenciales
+# Editar .env con DATABASE_URL y SECRET_KEY
 
-# Crear base de datos
+# Crear tablas
 alembic upgrade head
 
-# Ejecutar servidor
+# Servidor de desarrollo
 uvicorn app.main:app --reload
 ```
 
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
+## Estructura del proyecto
+
+```
+backend/
+├── app/
+│   ├── api/v1/endpoints/    # 5 routers: products, prices, economic, analysis, locations
+│   ├── config/              # settings.py (Pydantic), database.py (SQLAlchemy)
+│   ├── models/              # product, price_history, economic_indicator, location
+│   ├── schemas/             # Pydantic schemas para request/response
+│   ├── scrapers/            # 9 scrapers (base.py → carrefour → vea/disco/jumbo/dia/chango_mas, coto, atomo, la_anonima)
+│   ├── services/            # Logica de negocio y clientes API economicos
+│   └── utils/               # Normalizacion, location_utils
+├── alembic/versions/        # 9 migraciones
+├── scripts/                 # Scripts de test y populate por supermercado
+└── tests/
 ```
 
-## 🗄️ Modelo de Datos
+## API REST
 
-### Tablas Principales
+Base URL: `http://localhost:8000/api/v1`
 
-**products**: Catálogo de productos normalizados
-**price_history**: Historial completo de precios
-**economic_indicators**: Indicadores económicos (inflación, dólar, etc)
+| Metodo | Endpoint | Descripcion |
+|---|---|---|
+| GET | `/products` | Listar productos con paginacion y filtros |
+| GET | `/products/search` | Busqueda avanzada con filtros de precio |
+| GET | `/products/{id}` | Detalle con precios actuales por supermercado |
+| GET | `/products/{id}/prices/history` | Historial de precios |
+| GET | `/prices/compare` | Comparar precio entre supermercados |
+| GET | `/prices/current` | Snapshot de precios actuales |
+| GET | `/economic/context` | Contexto macroeconomico actual |
+| GET | `/economic/inflation/history` | Historial de inflacion |
+| GET | `/analysis/price-vs-inflation` | Comparar evolucion de precio vs inflacion |
+| GET | `/locations/regions` | Listar regiones de Argentina |
+| GET | `/locations/provinces` | Listar provincias |
+| GET | `/locations/coverage` | Cobertura de datos por ubicacion |
+| GET | `/locations/prices/by-location` | Precios filtrados por ubicacion |
 
-Ver [DATABASE.md](docs/DATABASE.md) para esquema completo.
+Documentacion interactiva en `/docs` (Swagger UI) cuando el servidor esta corriendo.
 
-## 📚 Documentación
+Ver [docs/API_DOCS.md](docs/API_DOCS.md) para referencia completa.
 
-- [Arquitectura](docs/ARCHITECTURE.md)
-- [Base de Datos](docs/DATABASE.md)
-- [API Docs](docs/API_DOCS.md)
+## Arquitectura de scrapers
 
-## 🎯 Roadmap
+```
+BaseScraper (base.py)
+├── CarrefourScraper (VTEX)
+│   ├── VeaScraper
+│   ├── DiscoScraper
+│   ├── JumboScraper
+│   ├── DiaScraper
+│   └── ChangoMasScraper
+├── CotoScraper (Constructor.io)
+├── AtomoScraper (PrestaShop)
+└── LaAnonimaScraper (API propia)
+```
 
-### Fase 1: Fundamentos ✅
-- [x] Estructura del proyecto
-- [x] Modelos de base de datos
-- [x] Setup FastAPI
-- [ ] Cliente ArgentinaDatos API
-- [ ] Primer scraper funcional
+Los scrapers VTEX heredan toda la logica de `CarrefourScraper` — cada subclase son ~24 lineas cambiando solo URLs y enum. `BaseScraper._get()` incluye retry con backoff exponencial para HTTP 429.
 
-### Fase 2: Scraping Completo
-- [ ] Scrapers de 3 supermercados
-- [ ] Normalización de datos
-- [ ] Manejo de errores
-- [ ] Sistema de logs
+## Modelo de datos
 
-### Fase 3: Backend Completo
-- [ ] API REST completa
-- [ ] Endpoints de búsqueda/comparación
-- [ ] Cache con Redis
-- [ ] Documentación OpenAPI
+3 tablas principales:
+- **products** — Catalogo normalizado (un producto = un barcode, multiples supermercados)
+- **price_history** — Historial de precios con ubicacion geografica (province, region, city)
+- **economic_indicators** — Inflacion, dolar, UVA, riesgo pais, plazo fijo
 
-### Fase 4: Frontend
-- [ ] Interfaz de búsqueda
-- [ ] Comparador de precios
-- [ ] Gráficos de evolución
-- [ ] Dashboard económico
+Ver [docs/DATABASE.md](docs/DATABASE.md) para esquema completo.
 
-### Fase 5: Automatización
-- [ ] Scraping programado (Celery)
-- [ ] Tareas automáticas
-- [ ] Monitoreo y alertas
+## Roadmap
 
-### Fase 6: Deployment
-- [ ] Containerización (Docker)
-- [ ] CI/CD
-- [ ] Deploy a producción
+- [x] Fase 1: Modelos + primer scraper (Coto)
+- [x] Fase 2: 9 supermercados + normalizacion + matching por barcode
+- [x] Fase 3: API REST (13 endpoints) + sistema de regiones
+- [ ] Fase 4: Frontend React
+- [ ] Fase 5: Automatizacion con Celery
+- [ ] Fase 6: Docker + Deploy
 
-## 📄 Licencia
+## Licencia
 
-MIT License
-
-## 👨‍💻 Autor
-
-Proyecto de aprendizaje - Web scraping, APIs y desarrollo full-stack
-
----
-
-**Estado**: 🚧 En desarrollo activo
+MIT

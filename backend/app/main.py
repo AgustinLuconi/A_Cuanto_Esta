@@ -3,6 +3,7 @@ Aplicación principal de FastAPI
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 
 # Crear instancia de FastAPI
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/")

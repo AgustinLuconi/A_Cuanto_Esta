@@ -18,14 +18,16 @@ from sqlalchemy import func
 
 MAX_PER_TERM = 25
 
+# Nota: términos genéricos como "leche", "aceite", "harina" redirigen en la API
+# y no devuelven artículos. Usar términos más específicos.
 CATEGORIES = {
-    "Lácteos":               ["leche", "yogur", "queso", "manteca"],
+    "Lácteos":               ["leche entera", "leche descremada", "sachet leche", "yogur", "queso", "margarina"],
     "Bebidas":               ["gaseosa", "agua", "jugo", "cerveza"],
-    "Aceites y Condimentos": ["aceite", "vinagre", "mayonesa"],
+    "Aceites y Condimentos": ["aceite girasol", "aceite oliva", "vinagre", "mayonesa"],
     "Limpieza":              ["detergente", "lavandina", "suavizante"],
     "Higiene":               ["shampoo", "jabon", "pasta dental"],
-    "Alimentos básicos":     ["arroz", "fideos", "harina", "azucar"],
-    "Snacks":                ["galletitas", "chocolate", "caramelos"],
+    "Alimentos básicos":     ["arroz", "fideos", "harina 0000", "azucar", "sal"],
+    "Desayuno":              ["galletitas", "mermelada", "cafe", "yerba"],
 }
 
 

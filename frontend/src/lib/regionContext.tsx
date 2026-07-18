@@ -1,0 +1,24 @@
+"use client";
+
+import { createContext, useContext, useState } from "react";
+
+type RegionContextType = {
+  region: string;
+  setRegion: (r: string) => void;
+};
+
+const RegionContext = createContext<RegionContextType>({
+  region: "AMBA",
+  setRegion: () => {},
+});
+
+export function RegionProvider({ children }: { children: React.ReactNode }) {
+  const [region, setRegion] = useState("AMBA");
+  return (
+    <RegionContext.Provider value={{ region, setRegion }}>
+      {children}
+    </RegionContext.Provider>
+  );
+}
+
+export const useRegion = () => useContext(RegionContext);

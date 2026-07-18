@@ -19,6 +19,7 @@ from app.config.database import Base
 from app.models.product import Product
 from app.models.price_history import PriceHistory
 from app.models.economic_indicator import EconomicIndicator
+from app.models.product_alias import ProductAlias
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

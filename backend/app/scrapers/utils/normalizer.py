@@ -91,6 +91,14 @@ def normalize_product_name(name: str) -> str:
     return re.sub(r"\s+", " ", ascii_name.lower()).strip()
 
 
+def normalize_name(text: str) -> str:
+    """Normalización agresiva para fuzzy matching: además reemplaza guiones, comas y puntos por espacios."""
+    normalized = unicodedata.normalize("NFKD", text)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_text = re.sub(r"[-,.]", " ", ascii_text)
+    return re.sub(r"\s+", " ", ascii_text.lower()).strip()
+
+
 def map_category(groups: list[dict]) -> ProductCategory:
     """
     Mapea los grupos de Coto (Constructor.io) a ProductCategory.

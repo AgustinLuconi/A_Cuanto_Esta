@@ -69,6 +69,7 @@ class CurrentPrice(BaseModel):
     in_stock: bool
     province: Optional[str] = None
     region: Optional[str] = None
+    product_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -78,6 +79,7 @@ class PriceComparison(BaseModel):
     """Schema para comparación de precios entre supermercados"""
     product_id: UUID4
     product_name: str
+    product_image_url: Optional[str] = None
     prices: list[CurrentPrice]
     lowest_price: Decimal
     highest_price: Decimal

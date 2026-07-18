@@ -5,6 +5,7 @@ GET /api/v1/economic/context            — Contexto macroeconómico actual
 GET /api/v1/economic/inflation/history  — Historial de inflación mensual o anual
 """
 from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Literal
 
 from dateutil.relativedelta import relativedelta
@@ -28,6 +29,22 @@ _CONTEXT_TYPES = [
 ]
 
 
+def _prev_value(db: Session, indicator_type: IndicatorType, latest_rec) -> Decimal | None:
+    """Devuelve el valor del registro inmediatamente anterior al más reciente."""
+    if latest_rec is None:
+        return None
+    prev = (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == indicator_type,
+            EconomicIndicator.date < latest_rec.date,
+        )
+        .order_by(EconomicIndicator.date.desc())
+        .first()
+    )
+    return prev.value if prev else None
+
+
 @router.get("/context", response_model=schemas_eco.EconomicContext)
 def get_economic_context(db: Session = Depends(get_db)):
     """
@@ -37,12 +54,60 @@ def get_economic_context(db: Session = Depends(get_db)):
     inflación mensual/anual, dólar blue y oficial, índice UVA,
     tasa de plazo fijo y riesgo país.
     Los campos quedan en `null` si no hay datos para ese indicador.
+    Incluye variaciones (pp para inflación, % para dólar) y acumulado anual.
     """
     latest = {t: EconomicIndicator.get_latest_value(db, t) for t in _CONTEXT_TYPES}
 
     def val(t: IndicatorType):
         rec = latest[t]
         return rec.value if rec else None
+
+    # Variación inflación mensual (diferencia en pp vs. mes anterior)
+    infl_rec = latest[IndicatorType.INFLATION_MONTHLY]
+    infl_prev = _prev_value(db, IndicatorType.INFLATION_MONTHLY, infl_rec)
+    if infl_rec and infl_prev is not None:
+        inflation_monthly_change = Decimal(str(float(infl_rec.value) - float(infl_prev)))
+    else:
+        inflation_monthly_change = None
+
+    # Variación dólar blue (% vs. registro anterior)
+    blue_rec = latest[IndicatorType.DOLLAR_BLUE]
+    blue_prev = _prev_value(db, IndicatorType.DOLLAR_BLUE, blue_rec)
+    if blue_rec and blue_prev is not None and float(blue_prev) != 0:
+        dollar_blue_change = Decimal(str(
+            (float(blue_rec.value) - float(blue_prev)) / float(blue_prev) * 100
+        ))
+    else:
+        dollar_blue_change = None
+
+    # Variación dólar oficial (% vs. registro anterior)
+    oficial_rec = latest[IndicatorType.DOLLAR_OFICIAL]
+    oficial_prev = _prev_value(db, IndicatorType.DOLLAR_OFICIAL, oficial_rec)
+    if oficial_rec and oficial_prev is not None and float(oficial_prev) != 0:
+        dollar_oficial_change = Decimal(str(
+            (float(oficial_rec.value) - float(oficial_prev)) / float(oficial_prev) * 100
+        ))
+    else:
+        dollar_oficial_change = None
+
+    # Inflación acumulada año corriente (compuesta)
+    current_year = date.today().year
+    ytd_records = (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == IndicatorType.INFLATION_MONTHLY,
+            EconomicIndicator.date >= date(current_year, 1, 1),
+        )
+        .order_by(EconomicIndicator.date.asc())
+        .all()
+    )
+    if ytd_records:
+        compound = Decimal("1")
+        for rec in ytd_records:
+            compound *= 1 + rec.value / 100
+        inflation_ytd = (compound - 1) * 100
+    else:
+        inflation_ytd = None
 
     # Fecha más reciente entre todos los registros disponibles
     dates = [rec.date for rec in latest.values() if rec is not None]
@@ -59,7 +124,57 @@ def get_economic_context(db: Session = Depends(get_db)):
         plazo_fijo_rate=val(IndicatorType.PLAZO_FIJO_RATE),
         risk_country=val(IndicatorType.RISK_COUNTRY),
         last_updated=last_updated,
+        inflation_monthly_change=inflation_monthly_change,
+        inflation_monthly_date=infl_rec.date if infl_rec else None,
+        dollar_blue_change=dollar_blue_change,
+        dollar_oficial_change=dollar_oficial_change,
+        inflation_ytd=inflation_ytd,
     )
+
+
+@router.get("/dollar/history")
+def get_dollar_history(
+    months: int = Query(default=6, ge=1, le=24, description="Últimos N meses de historial"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Historial de cotización del dólar (blue y oficial).
+
+    Devuelve los datos en formato adecuado para gráficos de línea doble.
+    Si no hay registros para un tipo, el array correspondiente queda vacío.
+    """
+    cutoff = date.today() - relativedelta(months=months)
+
+    blue = (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == IndicatorType.DOLLAR_BLUE,
+            EconomicIndicator.date >= cutoff,
+        )
+        .order_by(EconomicIndicator.date.asc())
+        .all()
+    )
+    oficial = (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == IndicatorType.DOLLAR_OFICIAL,
+            EconomicIndicator.date >= cutoff,
+        )
+        .order_by(EconomicIndicator.date.asc())
+        .all()
+    )
+
+    all_dates = sorted(set(r.date for r in blue + oficial))
+    labels = [d.strftime("%b") for d in all_dates]
+
+    blue_by_date = {r.date: float(r.value) for r in blue}
+    oficial_by_date = {r.date: float(r.value) for r in oficial}
+
+    return {
+        "labels": labels,
+        "blue": [blue_by_date.get(d, 0.0) for d in all_dates],
+        "oficial": [oficial_by_date.get(d, 0.0) for d in all_dates],
+    }
 
 
 @router.get("/inflation/history", response_model=list[schemas_eco.EconomicIndicator])

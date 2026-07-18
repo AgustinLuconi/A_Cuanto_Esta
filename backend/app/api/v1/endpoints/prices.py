@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config.database import get_db
 from app.models.price_history import PriceHistory, Supermarket
@@ -112,6 +112,7 @@ def compare_prices(
     return schemas_price.PriceComparison(
         product_id=product.id,
         product_name=product.name,
+        product_image_url=product.image_url,
         prices=[
             schemas_price.CurrentPrice(
                 supermarket=ph.supermarket,
@@ -122,6 +123,8 @@ def compare_prices(
                 url=ph.url,
                 last_updated=ph.scraped_at,
                 in_stock=ph.in_stock,
+                province=ph.province,
+                region=ph.region,
             )
             for ph in current_prices
         ],
@@ -156,7 +159,7 @@ def get_current_prices(
         .subquery()
     )
 
-    query = db.query(PriceHistory).join(
+    query = db.query(PriceHistory).options(joinedload(PriceHistory.product)).join(
         latest_sq,
         and_(
             PriceHistory.product_id == latest_sq.c.product_id,
@@ -184,6 +187,9 @@ def get_current_prices(
             url=ph.url,
             last_updated=ph.scraped_at,
             in_stock=ph.in_stock,
+            province=ph.province,
+            region=ph.region,
+            product_image_url=ph.product.image_url if ph.product else None,
         )
         for ph in records
     ]
