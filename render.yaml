@@ -3,6 +3,7 @@ services:
     name: acuantoesta-backend
     env: python
     region: ohio # Opción gratuita disponible
+    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
