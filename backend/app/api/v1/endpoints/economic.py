@@ -115,9 +115,28 @@ def get_economic_context(db: Session = Depends(get_db)):
         datetime.combine(max(dates), time.min) if dates else datetime.utcnow()
     )
 
+    # Inflación interanual (últimos 12 meses)
+    last_12m_cutoff = date.today() - relativedelta(months=12)
+    last_12m_records = (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == IndicatorType.INFLATION_MONTHLY,
+            EconomicIndicator.date >= last_12m_cutoff,
+        )
+        .order_by(EconomicIndicator.date.asc())
+        .all()
+    )
+    inflation_yearly_val = val(IndicatorType.INFLATION_YEARLY)
+    if not inflation_yearly_val and len(last_12m_records) >= 1:
+        compound = Decimal("1")
+        # Tomar como máximo los últimos 12 registros
+        for rec in last_12m_records[-12:]:
+            compound *= 1 + rec.value / 100
+        inflation_yearly_val = (compound - 1) * 100
+
     return schemas_eco.EconomicContext(
         inflation_monthly=val(IndicatorType.INFLATION_MONTHLY),
-        inflation_yearly=val(IndicatorType.INFLATION_YEARLY),
+        inflation_yearly=inflation_yearly_val,
         dollar_blue=val(IndicatorType.DOLLAR_BLUE),
         dollar_oficial=val(IndicatorType.DOLLAR_OFICIAL),
         uva_index=val(IndicatorType.UVA_INDEX),

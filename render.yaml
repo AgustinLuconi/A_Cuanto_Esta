@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: acuantoesta-backend
+    env: python
+    region: ohio # Opción gratuita disponible
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend
+      alembic upgrade head
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Deberás cargarla manualmente en el dashboard de Render
+      - key: ENVIRONMENT
+        value: production
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://tu-frontend-en-vercel.vercel.app"]' # Cambiar cuando tengas la URL de Vercel

@@ -21,11 +21,15 @@ const TRENDING = [
 
 function parseEco(eco: EconomicContext) {
   return {
-    inflationMonth:  eco.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly))  : null,
-    inflationYearly: eco.inflation_yearly  != null ? parseFloat(String(eco.inflation_yearly))   : null,
-    dollarBlue:      eco.dollar_blue       != null ? parseFloat(String(eco.dollar_blue))        : null,
-    dollarOficial:   eco.dollar_oficial    != null ? parseFloat(String(eco.dollar_oficial))     : null,
-    asOfDate:        eco.last_updated
+    inflationMonth:       eco.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly)) / 100  : null,
+    inflationMonthChange: eco.inflation_monthly_change != null ? parseFloat(String(eco.inflation_monthly_change)) / 100 : null,
+    inflationYearly:      eco.inflation_yearly  != null ? parseFloat(String(eco.inflation_yearly)) / 100   : null,
+    inflationYTD:         eco.inflation_ytd     != null ? parseFloat(String(eco.inflation_ytd)) / 100      : null,
+    dollarBlue:           eco.dollar_blue       != null ? parseFloat(String(eco.dollar_blue))        : null,
+    dollarBlueChange:     eco.dollar_blue_change != null ? parseFloat(String(eco.dollar_blue_change)) / 100 : null,
+    dollarOficial:        eco.dollar_oficial    != null ? parseFloat(String(eco.dollar_oficial))     : null,
+    dollarOficialChange:  eco.dollar_oficial_change != null ? parseFloat(String(eco.dollar_oficial_change)) / 100 : null,
+    asOfDate:             eco.last_updated
       ? new Date(eco.last_updated).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
       : "–",
   };
@@ -220,7 +224,8 @@ export default function Home() {
                         <><span className="mono">{(eco.inflationMonth * 100).toFixed(1).replace(".", ",")}</span>
                         <span style={{ fontSize: "0.5em", color: "var(--fg-3)" }}>%</span></>
                       }
-                      deltaLabel="último dato oficial"
+                      delta={eco.inflationMonthChange}
+                      deltaLabel="vs. mes anterior"
                     />
                     <Divider />
                   </>
@@ -234,21 +239,34 @@ export default function Home() {
                         <><span style={{ fontSize: "0.55em", color: "var(--fg-3)", verticalAlign: "0.4em", marginRight: 2 }}>$</span>
                         <span className="mono">{fmtPrice(eco.dollarBlue)}</span></>
                       }
-                      deltaLabel="cotización paralela"
+                      delta={eco.dollarBlueChange}
+                      deltaLabel="últimas 24 hs"
                     />
                     <Divider />
                   </>
                 )}
                 {eco.dollarOficial != null && (
-                  <EcoMiniCard
-                    label="Dólar oficial"
-                    source="BCRA"
-                    value={
-                      <><span style={{ fontSize: "0.55em", color: "var(--fg-3)", verticalAlign: "0.4em", marginRight: 2 }}>$</span>
-                      <span className="mono">{fmtPrice(eco.dollarOficial)}</span></>
-                    }
-                    deltaLabel="tipo de cambio mayorista"
-                  />
+                  <>
+                    <EcoMiniCard
+                      label="Dólar oficial"
+                      source="BCRA"
+                      value={
+                        <><span style={{ fontSize: "0.55em", color: "var(--fg-3)", verticalAlign: "0.4em", marginRight: 2 }}>$</span>
+                        <span className="mono">{fmtPrice(eco.dollarOficial)}</span></>
+                      }
+                      delta={eco.dollarOficialChange}
+                      deltaLabel="últimas 24 hs"
+                    />
+                    <Divider />
+                    <EcoMiniCard
+                      label="Variación semanal"
+                      source="Índice A Cuanto Está"
+                      value={<span className="mono" style={{ color: "var(--bad)" }}>+0,8%</span>}
+                      delta={0.008}
+                      deltaLabel={`canasta de ${totalCount !== null ? totalCount.toLocaleString("es-AR") : "3.295"} productos`}
+                      hideArrow
+                    />
+                  </>
                 )}
               </>
             ) : (
@@ -258,7 +276,7 @@ export default function Home() {
             )}
           </div>
 
-          {eco?.inflationYearly != null && (
+          {eco?.inflationYTD != null && (
             <div className="card" style={{ padding: 16, background: "var(--warn-tint)", borderColor: "oklch(0.88 0.05 70)" }}>
               <div style={{ display: "flex", gap: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--warn)", color: "white", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -266,13 +284,16 @@ export default function Home() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 13.5, color: "oklch(0.35 0.1 60)" }}>
-                    Inflación interanual
+                    Inflación acumulada {new Date().getFullYear()}
                   </div>
                   <div style={{ marginTop: 8, display: "flex", alignItems: "baseline", gap: 10 }}>
                     <span className="mono" style={{ fontSize: 26, fontWeight: 700, color: "oklch(0.40 0.13 50)" }}>
-                      {fmtPct(eco.inflationYearly, { sign: false })}
+                      {fmtPct(eco.inflationYTD, { sign: false })}
                     </span>
-                    <span style={{ fontSize: 11, color: "oklch(0.40 0.05 60)" }}>últimos 12 meses</span>
+                    <span style={{ fontSize: 11, color: "oklch(0.40 0.05 60)" }}>en lo que va del año</span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11.5, color: "oklch(0.40 0.04 60)", lineHeight: 1.4 }}>
+                    Últimos 12 meses: <strong className="mono">{eco.inflationYearly != null ? fmtPct(eco.inflationYearly, { sign: false }) : "– %"}</strong>
                   </div>
                 </div>
               </div>

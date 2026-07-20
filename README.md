@@ -47,9 +47,34 @@ cp .env.example .env
 
 # Crear tablas
 alembic upgrade head
+```
 
-# Servidor de desarrollo
+## Cómo correr el proyecto localmente
+
+Para desarrollar y ver la aplicación funcionando, necesitas correr ambos servidores (backend y frontend) en dos terminales separadas.
+
+### 1. Iniciar el Backend (FastAPI)
+Abre una terminal y ejecuta:
+```bash
+cd backend
+source venv/bin/activate  # Activa el entorno virtual
 uvicorn app.main:app --reload
+```
+El backend estará disponible en `http://localhost:8000`. Puedes ver la documentación de la API en `http://localhost:8000/docs`.
+
+### 2. Iniciar el Frontend (Next.js/React)
+Abre una **nueva** terminal y ejecuta:
+```bash
+cd frontend
+npm install  # (Solo la primera vez si no instalaste las dependencias)
+npm run dev
+```
+El frontend estará disponible en `http://localhost:3000`.
+
+### Tareas adicionales (Scraping)
+Si necesitas actualizar los datos de la base de datos (inflación, precios, etc.) de forma manual, puedes correr los scripts desde la carpeta `backend` con el entorno virtual activado:
+```bash
+python scripts/fetch_economic_data.py
 ```
 
 ## Estructura del proyecto

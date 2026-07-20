@@ -53,7 +53,7 @@ class ArgentinaDatosClient:
 
     def get_inflation_yearly(self) -> list[InflationRecord]:
         """Retorna lista vacía si el endpoint no está disponible (actualmente 404)."""
-        data = self._get("/v1/finanzas/indices/inflacion-interanual")
+        data = self._get("/v1/finanzas/indices/inflacionInteranual")
         if data is None:
             return []
         return [InflationRecord(**item) for item in data]
