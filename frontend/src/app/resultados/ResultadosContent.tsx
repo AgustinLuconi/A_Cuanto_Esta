@@ -131,7 +131,7 @@ export default function ResultadosContent() {
         <div style={{ fontSize: 12, color: "var(--fg-3)", marginBottom: 6 }}>
           <Link href="/" style={{ cursor: "pointer" }}>Inicio</Link>
           {catLabel && <><span style={{ margin: "0 6px" }}>›</span><span>{catLabel}</span></>}
-          {q && <><span style={{ margin: "0 6px" }}>›</span><span style={{ color: "var(--fg)" }}>"{q}"</span></>}
+          {q && <><span style={{ margin: "0 6px" }}>›</span><span style={{ color: "var(--fg)" }}>&quot;{q}&quot;</span></>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 24, justifyContent: "space-between" }}>
           <div>
@@ -349,7 +349,7 @@ export default function ResultadosContent() {
               {q && (
                 <button className="chip active"
                   onClick={() => router.push(categoria ? `/resultados?categoria=${categoria}` : "/resultados")}>
-                  "{q}" <Icon.close style={{ marginLeft: 2 }} />
+                  &quot;{q}&quot; <Icon.close style={{ marginLeft: 2 }} />
                 </button>
               )}
               {region !== "Todas las regiones" && (
@@ -384,7 +384,7 @@ export default function ResultadosContent() {
               <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
               <p style={{ color: "var(--fg-3)" }}>
                 No encontramos productos para{" "}
-                {q ? <strong>"{q}"</strong> : <strong>{catLabel}</strong>}
+                {q ? <strong>&quot;{q}&quot;</strong> : <strong>{catLabel}</strong>}
               </p>
               <Link href="/" style={{ display: "inline-block", marginTop: 12, fontSize: 13, color: "var(--primary)" }}>
                 Volver al inicio
@@ -435,6 +435,7 @@ function ProductCardFull({ product, isCheapest = false, smFilter }: {
     queryFn: () => getProduct(product.id),
     staleTime: 5 * 60 * 1000,
   });
+  const router = useRouter();
 
   const lowestPrice = full?.lowest_price ?? null;
   const cheapestSm = full?.current_prices?.reduce((best, cp) =>
@@ -445,8 +446,6 @@ function ProductCardFull({ product, isCheapest = false, smFilter }: {
     const hasSm = full.current_prices.some((cp) => smFilter.has(cp.supermarket));
     if (!hasSm) return null;
   }
-
-  const router = useRouter();
 
   const imageEl = product.image_url
     ? <img src={product.image_url} alt={product.name} style={{ width: isCheapest ? 110 : 80, height: isCheapest ? 110 : 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", flexShrink: 0 }} />
@@ -548,15 +547,6 @@ function PriceInput({ value, onChange, placeholder }: {
         min={0}
         style={{ width: "100%", padding: "7px 7px 7px 18px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, fontFamily: "var(--font-mono)", background: "var(--bg)", color: "var(--fg)", outline: "none", boxSizing: "border-box" }}
       />
-    </div>
-  );
-}
-
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card" style={{ padding: 16 }}>
-      <h4 style={{ marginBottom: 12 }}>{title}</h4>
-      <div className="col" style={{ gap: 0 }}>{children}</div>
     </div>
   );
 }

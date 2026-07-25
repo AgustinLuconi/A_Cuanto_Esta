@@ -474,7 +474,7 @@ export function ImagePlaceholder({ label = "producto", w = 80, h = 80, radius = 
   const uid = useId();
   const id = `img-ph-${uid.replace(/:/g, "")}`;
   return (
-    <div style={{
+    <div aria-label={label} style={{
       width: w, height: h, borderRadius: radius,
       background: "var(--surface)",
       border: "1px solid var(--border)",

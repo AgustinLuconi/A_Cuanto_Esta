@@ -2,7 +2,6 @@ import axios from "axios";
 import type {
   EconomicContext,
   EconomicIndicator,
-  Product,
   ProductCategory,
   ProductCount,
   ProductList,
