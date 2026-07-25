@@ -17,7 +17,7 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: BACKEND_CORS_ORIGINS
-        value: '["https://tu-frontend-en-vercel.vercel.app"]' # Cambiar cuando tengas la URL de Vercel
+        value: '["https://a-cuanto-esta-eight.vercel.app"]'
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
