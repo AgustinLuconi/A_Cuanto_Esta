@@ -70,6 +70,11 @@ class EconomicContext(BaseModel):
     inflation_yearly: Optional[Decimal] = None
     dollar_blue: Optional[Decimal] = None
     dollar_oficial: Optional[Decimal] = None
+    dollar_mayorista: Optional[Decimal] = None
+    dollar_mep: Optional[Decimal] = None
+    dollar_ccl: Optional[Decimal] = None
+    dollar_cripto: Optional[Decimal] = None
+    dollar_tarjeta: Optional[Decimal] = None
     uva_index: Optional[Decimal] = None
     plazo_fijo_rate: Optional[Decimal] = None
     risk_country: Optional[Decimal] = None
@@ -79,6 +84,12 @@ class EconomicContext(BaseModel):
     inflation_monthly_date: Optional[date] = None        # fecha del último dato INDEC
     dollar_blue_change: Optional[Decimal] = None         # % vs. registro anterior
     dollar_oficial_change: Optional[Decimal] = None      # % vs. registro anterior
+    dollar_mayorista_change: Optional[Decimal] = None    # % vs. registro anterior
+    dollar_mep_change: Optional[Decimal] = None          # % vs. registro anterior
+    dollar_ccl_change: Optional[Decimal] = None          # % vs. registro anterior
+    dollar_cripto_change: Optional[Decimal] = None       # % vs. registro anterior
+    dollar_tarjeta_change: Optional[Decimal] = None      # % vs. registro anterior
+    risk_country_change: Optional[Decimal] = None        # % vs. registro anterior
     inflation_ytd: Optional[Decimal] = None              # acumulado año corriente (compuesto)
 
     class Config:

@@ -23,6 +23,11 @@ _CONTEXT_TYPES = [
     IndicatorType.INFLATION_YEARLY,
     IndicatorType.DOLLAR_BLUE,
     IndicatorType.DOLLAR_OFICIAL,
+    IndicatorType.DOLLAR_MAYORISTA,
+    IndicatorType.DOLLAR_MEP,
+    IndicatorType.DOLLAR_CCL,
+    IndicatorType.DOLLAR_CRIPTO,
+    IndicatorType.DOLLAR_TARJETA,
     IndicatorType.UVA_INDEX,
     IndicatorType.PLAZO_FIJO_RATE,
     IndicatorType.RISK_COUNTRY,
@@ -43,6 +48,22 @@ def _prev_value(db: Session, indicator_type: IndicatorType, latest_rec) -> Decim
         .first()
     )
     return prev.value if prev else None
+
+
+def _value_and_change(
+    db: Session,
+    latest: dict[IndicatorType, EconomicIndicator | None],
+    indicator_type: IndicatorType,
+) -> tuple[Decimal | None, Decimal | None]:
+    """Valor actual y variación % vs. registro anterior para un indicador."""
+    rec = latest[indicator_type]
+    if rec is None:
+        return None, None
+    prev = _prev_value(db, indicator_type, rec)
+    if prev is None or float(prev) == 0:
+        return rec.value, None
+    change = Decimal(str((float(rec.value) - float(prev)) / float(prev) * 100))
+    return rec.value, change
 
 
 @router.get("/context", response_model=schemas_eco.EconomicContext)
@@ -70,25 +91,14 @@ def get_economic_context(db: Session = Depends(get_db)):
     else:
         inflation_monthly_change = None
 
-    # Variación dólar blue (% vs. registro anterior)
-    blue_rec = latest[IndicatorType.DOLLAR_BLUE]
-    blue_prev = _prev_value(db, IndicatorType.DOLLAR_BLUE, blue_rec)
-    if blue_rec and blue_prev is not None and float(blue_prev) != 0:
-        dollar_blue_change = Decimal(str(
-            (float(blue_rec.value) - float(blue_prev)) / float(blue_prev) * 100
-        ))
-    else:
-        dollar_blue_change = None
-
-    # Variación dólar oficial (% vs. registro anterior)
-    oficial_rec = latest[IndicatorType.DOLLAR_OFICIAL]
-    oficial_prev = _prev_value(db, IndicatorType.DOLLAR_OFICIAL, oficial_rec)
-    if oficial_rec and oficial_prev is not None and float(oficial_prev) != 0:
-        dollar_oficial_change = Decimal(str(
-            (float(oficial_rec.value) - float(oficial_prev)) / float(oficial_prev) * 100
-        ))
-    else:
-        dollar_oficial_change = None
+    dollar_blue, dollar_blue_change = _value_and_change(db, latest, IndicatorType.DOLLAR_BLUE)
+    dollar_oficial, dollar_oficial_change = _value_and_change(db, latest, IndicatorType.DOLLAR_OFICIAL)
+    dollar_mayorista, dollar_mayorista_change = _value_and_change(db, latest, IndicatorType.DOLLAR_MAYORISTA)
+    dollar_mep, dollar_mep_change = _value_and_change(db, latest, IndicatorType.DOLLAR_MEP)
+    dollar_ccl, dollar_ccl_change = _value_and_change(db, latest, IndicatorType.DOLLAR_CCL)
+    dollar_cripto, dollar_cripto_change = _value_and_change(db, latest, IndicatorType.DOLLAR_CRIPTO)
+    dollar_tarjeta, dollar_tarjeta_change = _value_and_change(db, latest, IndicatorType.DOLLAR_TARJETA)
+    risk_country, risk_country_change = _value_and_change(db, latest, IndicatorType.RISK_COUNTRY)
 
     # Inflación acumulada año corriente (compuesta)
     current_year = date.today().year
@@ -137,16 +147,27 @@ def get_economic_context(db: Session = Depends(get_db)):
     return schemas_eco.EconomicContext(
         inflation_monthly=val(IndicatorType.INFLATION_MONTHLY),
         inflation_yearly=inflation_yearly_val,
-        dollar_blue=val(IndicatorType.DOLLAR_BLUE),
-        dollar_oficial=val(IndicatorType.DOLLAR_OFICIAL),
+        dollar_blue=dollar_blue,
+        dollar_oficial=dollar_oficial,
+        dollar_mayorista=dollar_mayorista,
+        dollar_mep=dollar_mep,
+        dollar_ccl=dollar_ccl,
+        dollar_cripto=dollar_cripto,
+        dollar_tarjeta=dollar_tarjeta,
         uva_index=val(IndicatorType.UVA_INDEX),
         plazo_fijo_rate=val(IndicatorType.PLAZO_FIJO_RATE),
-        risk_country=val(IndicatorType.RISK_COUNTRY),
+        risk_country=risk_country,
         last_updated=last_updated,
         inflation_monthly_change=inflation_monthly_change,
         inflation_monthly_date=infl_rec.date if infl_rec else None,
         dollar_blue_change=dollar_blue_change,
         dollar_oficial_change=dollar_oficial_change,
+        dollar_mayorista_change=dollar_mayorista_change,
+        dollar_mep_change=dollar_mep_change,
+        dollar_ccl_change=dollar_ccl_change,
+        dollar_cripto_change=dollar_cripto_change,
+        dollar_tarjeta_change=dollar_tarjeta_change,
+        risk_country_change=risk_country_change,
         inflation_ytd=inflation_ytd,
     )
 
