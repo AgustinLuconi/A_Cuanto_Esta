@@ -29,6 +29,8 @@ function parseEco(eco: EconomicContext) {
     dollarBlueChange:     eco.dollar_blue_change != null ? parseFloat(String(eco.dollar_blue_change)) / 100 : null,
     dollarOficial:        eco.dollar_oficial    != null ? parseFloat(String(eco.dollar_oficial))     : null,
     dollarOficialChange:  eco.dollar_oficial_change != null ? parseFloat(String(eco.dollar_oficial_change)) / 100 : null,
+    riskCountry:          eco.risk_country      != null ? parseFloat(String(eco.risk_country))       : null,
+    riskCountryChange:    eco.risk_country_change != null ? parseFloat(String(eco.risk_country_change)) / 100 : null,
     asOfDate:             eco.last_updated
       ? new Date(eco.last_updated).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
       : "–",
@@ -265,6 +267,21 @@ export default function Home() {
                       delta={0.008}
                       deltaLabel={`canasta de ${totalCount !== null ? totalCount.toLocaleString("es-AR") : "3.295"} productos`}
                       hideArrow
+                    />
+                  </>
+                )}
+                {eco.riskCountry != null && (
+                  <>
+                    <Divider />
+                    <EcoMiniCard
+                      label="Riesgo país"
+                      source="JP Morgan EMBI+"
+                      value={
+                        <><span className="mono">{fmtPrice(eco.riskCountry)}</span>
+                        <span style={{ fontSize: "0.5em", color: "var(--fg-3)", marginLeft: 4 }}>pb</span></>
+                      }
+                      delta={eco.riskCountryChange}
+                      deltaLabel="últimas 24 hs"
                     />
                   </>
                 )}

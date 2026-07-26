@@ -33,7 +33,7 @@ function mesAnio(isoDate: string | null): string {
   return `${MESES[month - 1]} ${year}`;
 }
 
-function ChangeBadge({ value }: { value: number | null | undefined }) {
+export function ChangeBadge({ value }: { value: number | null | undefined }) {
   if (value == null) return null;
   const isPositive = value > 0;
   const arrow = isPositive ? "↑" : "↓";
@@ -134,6 +134,13 @@ export default function EconomicSidebar() {
             source="BCRA"
             value={fmtARS(data?.dollar_oficial)}
             badge={<ChangeBadge value={data?.dollar_oficial_change} />}
+            subtitle="últimas 24 hs"
+          />
+          <IndicatorRow
+            label="Riesgo país"
+            source="JP Morgan EMBI+"
+            value={data?.risk_country != null ? `${fmt(data.risk_country, 0)} pb` : "—"}
+            badge={<ChangeBadge value={data?.risk_country_change} />}
             subtitle="últimas 24 hs"
           />
         </div>
