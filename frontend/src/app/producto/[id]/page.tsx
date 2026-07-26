@@ -48,8 +48,12 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
   }
 
   const sortedPrices = [...product.current_prices].sort((a, b) => a.price - b.price);
-  const hasChart = priceHistory.length > 0;
-  const { labels, series } = hasChart ? buildPriceChartData(priceHistory) : { labels: [], series: {} };
+  const { labels, series } = priceHistory.length > 0 ? buildPriceChartData(priceHistory) : { labels: [], series: {} };
+  // Con un único día de historial, MultiLineChart no puede trazar una línea (división por
+  // labels.length - 1 en su escala X produce NaN). Se exige al menos 2 días distintos antes
+  // de intentar renderizar el gráfico; si no, se muestra el mismo estado vacío que para
+  // "sin historial en absoluto".
+  const hasChart = labels.length >= 2;
   const inflation = hasChart ? buildInflationFactors(labels, inflationRaw) : [];
 
   return (
