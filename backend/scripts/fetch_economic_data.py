@@ -32,6 +32,16 @@ def main():
     fetch_all = args.all or (not args.inflation and not args.dollars and not args.risk_country)
 
     client = ArgentinaDatosClient()
+
+    # Chequeo defensivo: si ArgentinaDatos está caído, cortar acá con exit code
+    # distinto de 0 en vez de seguir y terminar "en verde" con 0 registros
+    # nuevos guardados (eso es indistinguible de un día sin novedades).
+    estado = client.get_estado()
+    if estado != "Correcto":
+        print(f"[estado] ArgentinaDatos no responde correctamente (estado={estado!r}). Abortando.")
+        sys.exit(1)
+    print(f"[estado] ArgentinaDatos OK (estado={estado!r})")
+
     session = SessionLocal()
 
     try:

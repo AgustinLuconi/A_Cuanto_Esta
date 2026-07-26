@@ -59,3 +59,27 @@ def test_get_all_dollars_parses_multiple_casas():
     assert len(records) == 2
     assert {r.casa for r in records} == {"blue", "mayorista"}
     assert [r.venta for r in records if r.casa == "blue"][0] == 1320.0
+
+
+def test_get_estado_parses_response():
+    with patch(
+        "app.services.economic_data.client.httpx.get",
+        return_value=_fake_response({"estado": "Correcto"}),
+    ) as mock_get:
+        client = ArgentinaDatosClient()
+        estado = client.get_estado()
+
+    called_url = mock_get.call_args[0][0]
+    assert called_url.endswith("/v1/estado")
+    assert estado == "Correcto"
+
+
+def test_get_estado_returns_none_on_error():
+    with patch(
+        "app.services.economic_data.client.httpx.get",
+        side_effect=httpx.ConnectError("boom"),
+    ):
+        client = ArgentinaDatosClient()
+        estado = client.get_estado()
+
+    assert estado is None

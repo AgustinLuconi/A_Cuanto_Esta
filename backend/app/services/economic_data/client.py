@@ -40,7 +40,7 @@ class ArgentinaDatosClient:
         return [UVARecord(**item) for item in data]
 
     def get_inflation_yearly(self) -> list[InflationRecord]:
-        """Retorna lista vacía si el endpoint no está disponible (actualmente 404)."""
+        """Retorna lista vacía si el endpoint no responde correctamente."""
         data = self._get("/v1/finanzas/indices/inflacionInteranual")
         if data is None:
             return []
@@ -59,6 +59,16 @@ class ArgentinaDatosClient:
         if data is None:
             return []
         return [DollarRecord(**item) for item in data]
+
+    def get_estado(self) -> str | None:
+        """
+        Health-check propio de ArgentinaDatos. Devuelve el string de estado
+        (ej. "Correcto") o None si el endpoint no respondió.
+        """
+        data = self._get("/v1/estado")
+        if data is None:
+            return None
+        return data.get("estado")
 
 
 class DolarAPIClient:
