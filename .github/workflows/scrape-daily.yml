@@ -1,0 +1,95 @@
+# .github/workflows/scrape-daily.yml
+name: Scrape supermercados (diario)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-backend
+
+      - name: Coto
+        id: coto
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_coto_products.py
+
+      - name: Carrefour
+        id: carrefour
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_carrefour_products.py
+
+      - name: Disco
+        id: disco
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_disco_products.py
+
+      - name: Atomo
+        id: atomo
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_atomo_products.py
+
+      - name: Vea
+        id: vea
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_vea_products.py
+
+      - name: Jumbo
+        id: jumbo
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_jumbo_products.py
+
+      - name: Dia
+        id: dia
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_dia_products.py
+
+      - name: La Anonima
+        id: la_anonima
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_la_anonima_products.py
+
+      - name: Chango Mas
+        id: chango_mas
+        continue-on-error: true
+        working-directory: backend
+        run: python scripts/populate_chango_mas_products.py
+
+      - name: Verificar resultados
+        if: always()
+        run: |
+          FAILED=0
+          for outcome in \
+            "${{ steps.coto.outcome }}" \
+            "${{ steps.carrefour.outcome }}" \
+            "${{ steps.disco.outcome }}" \
+            "${{ steps.atomo.outcome }}" \
+            "${{ steps.vea.outcome }}" \
+            "${{ steps.jumbo.outcome }}" \
+            "${{ steps.dia.outcome }}" \
+            "${{ steps.la_anonima.outcome }}" \
+            "${{ steps.chango_mas.outcome }}"; do
+            echo "outcome: $outcome"
+            if [ "$outcome" = "failure" ]; then
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" = "1" ]; then
+            echo "::error::Al menos un supermercado falló. Revisá los logs de los steps de arriba."
+            exit 1
+          fi
