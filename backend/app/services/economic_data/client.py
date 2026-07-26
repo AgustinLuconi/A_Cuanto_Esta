@@ -58,6 +58,20 @@ class ArgentinaDatosClient:
             return []
         return [InflationRecord(**item) for item in data]
 
+    def get_risk_country(self) -> list[InflationRecord]:
+        """Riesgo país (EMBI+). Mismo shape que inflación: {fecha, valor}."""
+        data = self._get("/v1/finanzas/indices/riesgo-pais")
+        if data is None:
+            return []
+        return [InflationRecord(**item) for item in data]
+
+    def get_all_dollars(self) -> list[DollarRecord]:
+        """Histórico combinado de las 8 casas de cambio en una sola llamada."""
+        data = self._get("/v1/cotizaciones/dolares")
+        if data is None:
+            return []
+        return [DollarRecord(**item) for item in data]
+
 
 class DolarAPIClient:
     """Cliente para dolarapi.com — cotizaciones en tiempo real."""
