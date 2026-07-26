@@ -1,0 +1,20 @@
+# .github/workflows/inflation-daily.yml
+name: Inflación (diario)
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch-inflation:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-backend
+      - name: Fetch inflación
+        working-directory: backend
+        run: python scripts/fetch_economic_data.py --inflation
