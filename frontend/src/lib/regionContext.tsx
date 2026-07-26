@@ -8,12 +8,12 @@ type RegionContextType = {
 };
 
 const RegionContext = createContext<RegionContextType>({
-  region: "AMBA",
+  region: "Todas las regiones",
   setRegion: () => {},
 });
 
 export function RegionProvider({ children }: { children: React.ReactNode }) {
-  const [region, setRegion] = useState("AMBA");
+  const [region, setRegion] = useState("Todas las regiones");
   return (
     <RegionContext.Provider value={{ region, setRegion }}>
       {children}

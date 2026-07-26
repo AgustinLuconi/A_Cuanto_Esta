@@ -405,12 +405,19 @@ export default function ResultadosContent() {
           {/* Product list */}
           {!isLoading && products.length > 0 && (
             <>
-              {/* First result as cheapest banner */}
-              <ProductCardFull product={products[0]} isCheapest smFilter={smFilter} />
-              {/* Rest of results */}
-              {products.slice(1).map((p) => (
-                <ProductCardFull key={p.id} product={p} smFilter={smFilter} />
-              ))}
+              {sort === "price_asc" ? (
+                <>
+                  {/* Ordenado por precio ascendente: el primero es realmente el más barato */}
+                  <ProductCardFull product={products[0]} isCheapest smFilter={smFilter} />
+                  {products.slice(1).map((p) => (
+                    <ProductCardFull key={p.id} product={p} smFilter={smFilter} />
+                  ))}
+                </>
+              ) : (
+                products.map((p) => (
+                  <ProductCardFull key={p.id} product={p} smFilter={smFilter} />
+                ))
+              )}
               {totalPages > 1 && (
                 <Pagination current={page} total={totalPages} onPage={goToPage} />
               )}
