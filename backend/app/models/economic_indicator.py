@@ -18,6 +18,9 @@ class IndicatorType(str, enum.Enum):
     DOLLAR_OFICIAL = "dollar_oficial"        # Dólar oficial
     DOLLAR_MEP = "dollar_mep"                # Dólar MEP
     DOLLAR_CCL = "dollar_ccl"                # Dólar CCL
+    DOLLAR_MAYORISTA = "dollar_mayorista"    # Dólar mayorista
+    DOLLAR_CRIPTO = "dollar_cripto"          # Dólar cripto
+    DOLLAR_TARJETA = "dollar_tarjeta"        # Dólar tarjeta
     UVA_INDEX = "uva_index"                  # Índice UVA
     PLAZO_FIJO_RATE = "plazo_fijo_rate"      # Tasa plazo fijo
     RISK_COUNTRY = "risk_country"            # Riesgo país
