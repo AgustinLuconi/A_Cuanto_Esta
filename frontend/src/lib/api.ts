@@ -88,6 +88,18 @@ export async function getDollarHistory(months = 6): Promise<{
   return data;
 }
 
+export async function getRiskCountryHistory(
+  months = 12
+): Promise<Array<{ date: string; value: number }>> {
+  const { data } = await api.get<EconomicIndicator[]>(
+    `/economic/risk-country/history?months=${months}`
+  );
+  return data.map((r) => ({
+    date: r.date,
+    value: parseFloat(String(r.value)),
+  }));
+}
+
 export async function getLocationCoverage(): Promise<unknown> {
   const { data } = await api.get("/locations/coverage");
   return data;

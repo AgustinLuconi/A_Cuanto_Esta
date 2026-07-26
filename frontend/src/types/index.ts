@@ -67,6 +67,11 @@ export interface EconomicContext {
   inflation_yearly: number | null;
   dollar_blue: number | null;
   dollar_oficial: number | null;
+  dollar_mayorista: number | null;
+  dollar_mep: number | null;
+  dollar_ccl: number | null;
+  dollar_cripto: number | null;
+  dollar_tarjeta: number | null;
   uva_index: number | null;
   plazo_fijo_rate: number | null;
   risk_country: number | null;
@@ -75,6 +80,12 @@ export interface EconomicContext {
   inflation_monthly_date: string | null;
   dollar_blue_change: number | null;
   dollar_oficial_change: number | null;
+  dollar_mayorista_change: number | null;
+  dollar_mep_change: number | null;
+  dollar_ccl_change: number | null;
+  dollar_cripto_change: number | null;
+  dollar_tarjeta_change: number | null;
+  risk_country_change: number | null;
   inflation_ytd: number | null;
 }
 
