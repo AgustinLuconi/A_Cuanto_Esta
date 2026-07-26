@@ -159,7 +159,7 @@ export default function CoberturaPage() {
                     border: "1px solid var(--border)",
                     display: "grid", placeItems: "center",
                     fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700,
-                    color: isActive ? "white" : "var(--fg-2)",
+                    color: "white",
                   }}>
                     {(REGION_COV[r.id] * 100).toFixed(0)}
                   </div>
