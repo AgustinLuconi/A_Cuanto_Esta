@@ -2,6 +2,7 @@ import axios from "axios";
 import type {
   EconomicContext,
   EconomicIndicator,
+  PriceHistoryRecord,
   ProductCategory,
   ProductCount,
   ProductList,
@@ -57,6 +58,23 @@ export async function getProductsList(
 export async function getProduct(id: string): Promise<ProductWithPrices> {
   const { data } = await api.get<ProductWithPrices>(`/products/${id}`);
   return data;
+}
+
+export async function getPriceHistory(
+  productId: string,
+  days = 90
+): Promise<PriceHistoryRecord[]> {
+  try {
+    const { data } = await api.get<PriceHistoryRecord[]>(
+      `/products/${productId}/prices/history?days=${days}`
+    );
+    return data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getEconomicContext(): Promise<EconomicContext> {
