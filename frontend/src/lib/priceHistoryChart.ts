@@ -19,8 +19,8 @@ export function buildPriceChartData(records: PriceHistoryRecord[]): {
 
   // 2. Unión de días de todos los supermercados, ordenados ascendente
   const allDays = new Set<string>();
-  for (const dayMap of bySuper.values()) {
-    for (const day of dayMap.keys()) allDays.add(day);
+  for (const dayMap of Array.from(bySuper.values())) {
+    for (const day of Array.from(dayMap.keys())) allDays.add(day);
   }
   const labels = Array.from(allDays).sort();
 
@@ -28,7 +28,7 @@ export function buildPriceChartData(records: PriceHistoryRecord[]): {
   //    forward-fill del último conocido si no, back-fill con el primer
   //    precio conocido para los días anteriores al primer registro.
   const series: Record<string, number[]> = {};
-  for (const [supermarket, dayMap] of bySuper.entries()) {
+  for (const [supermarket, dayMap] of Array.from(bySuper.entries())) {
     const sortedDays = Array.from(dayMap.keys()).sort();
     const firstKnownPrice = dayMap.get(sortedDays[0])!.price;
     let lastKnown = firstKnownPrice;
@@ -67,9 +67,17 @@ export function buildInflationFactors(
   const baseMonth = labels[0].slice(0, 7);
   const baseFactor = factorByMonth.get(baseMonth) ?? 1;
 
+  // Forward-fill: mantener el último factor conocido si un mes no tiene dato.
+  // Solo normalizar cuando tenemos datos reales; forward-fill mantiene el factor sin normalizar.
+  let lastKnownFactor = 1;
   return labels.map((day) => {
     const month = day.slice(0, 7);
     const factor = factorByMonth.get(month);
-    return factor != null ? factor / baseFactor : 1;
+    if (factor != null) {
+      lastKnownFactor = factor;
+      return factor / baseFactor; // Normalizar datos reales
+    } else {
+      return lastKnownFactor;     // Forward-fill sin normalizar
+    }
   });
 }
