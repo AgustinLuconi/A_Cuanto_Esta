@@ -38,8 +38,11 @@ export default function EconomiaPage() {
     staleTime: 30 * 60 * 1000,
   });
 
-  const inflationMonth = eco?.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly)) : null;
-  const inflationYearly = eco?.inflation_yearly != null ? parseFloat(String(eco.inflation_yearly)) : null;
+  // La API ya devuelve estos valores como porcentaje (ej. 1.9 = 1,9%), no como fracción.
+  // fmtPct() espera una fracción (multiplica x100 internamente) — hay que normalizar acá,
+  // igual que hace parseEco() en app/page.tsx.
+  const inflationMonth = eco?.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly)) / 100 : null;
+  const inflationYearly = eco?.inflation_yearly != null ? parseFloat(String(eco.inflation_yearly)) / 100 : null;
   const dollarBlue = eco?.dollar_blue != null ? parseFloat(String(eco.dollar_blue)) : null;
   const dollarOficial = eco?.dollar_oficial != null ? parseFloat(String(eco.dollar_oficial)) : null;
   const asOfDate = eco?.last_updated
@@ -47,11 +50,12 @@ export default function EconomiaPage() {
     : "–";
 
   // Convertir historial a formato BarChart: { m: "Ene", v: 3.1 }
+  // r.value ya viene como porcentaje de la API (BarChart no multiplica, a diferencia de fmtPct)
   const inflationBarData = [...inflationRaw]
     .reverse()
     .map((r) => ({
       m: new Date(r.date + "T00:00:00").toLocaleDateString("es-AR", { month: "short" }),
-      v: r.value * 100,
+      v: parseFloat(String(r.value)),
     }));
 
   const dollarLabels = dollarHist?.labels ?? [];
