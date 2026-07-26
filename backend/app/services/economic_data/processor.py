@@ -63,6 +63,67 @@ class EconomicDataProcessor:
         self.session.commit()
         return saved
 
+    def _existing_dates(self, indicator_type: IndicatorType) -> set:
+        """
+        Todas las fechas ya guardadas para un tipo de indicador, en una sola
+        consulta. Reemplaza el patrón _exists()-por-fila para cargas masivas
+        (el endpoint combinado de dólares trae ~30.000 registros de una vez).
+        """
+        rows = (
+            self.session.query(EconomicIndicator.date)
+            .filter(EconomicIndicator.indicator_type == indicator_type)
+            .all()
+        )
+        return {row[0] for row in rows}
+
+    _CASA_TO_DOLLAR_TYPE = {
+        "blue": IndicatorType.DOLLAR_BLUE,
+        "oficial": IndicatorType.DOLLAR_OFICIAL,
+        "mayorista": IndicatorType.DOLLAR_MAYORISTA,
+        "bolsa": IndicatorType.DOLLAR_MEP,
+        "contadoconliqui": IndicatorType.DOLLAR_CCL,
+        "cripto": IndicatorType.DOLLAR_CRIPTO,
+        "tarjeta": IndicatorType.DOLLAR_TARJETA,
+    }
+
+    def save_all_dollars(self, records: list[DollarRecord]) -> dict:
+        """
+        Guarda el histórico combinado de /v1/cotizaciones/dolares (todas las
+        casas). Agrupa por casa y hace un solo SELECT de fechas existentes
+        por tipo de indicador (no por fila) antes de insertar.
+        Devuelve {casa: cantidad_guardada} para logging. Casas sin
+        IndicatorType mapeado (ej. "solidario") se ignoran.
+        """
+        by_casa: dict[str, list[DollarRecord]] = {}
+        for record in records:
+            by_casa.setdefault(record.casa, []).append(record)
+
+        saved_per_casa: dict[str, int] = {}
+        for casa, casa_records in by_casa.items():
+            indicator_type = self._CASA_TO_DOLLAR_TYPE.get(casa)
+            if indicator_type is None:
+                continue
+            existing = self._existing_dates(indicator_type)
+            saved = 0
+            for record in casa_records:
+                if record.fecha in existing:
+                    continue
+                self.session.add(
+                    EconomicIndicator(
+                        indicator_type=indicator_type,
+                        value=record.venta,
+                        date=record.fecha,
+                        source=DataSource.ARGENTINADATOS,
+                        metadata_json=json.dumps({"compra": record.compra}),
+                    )
+                )
+                existing.add(record.fecha)
+                saved += 1
+            saved_per_casa[casa] = saved
+
+        self.session.commit()
+        return saved_per_casa
+
     _CASA_TO_INDICATOR = {
         "blue": IndicatorType.DOLLAR_BLUE,
         "oficial": IndicatorType.DOLLAR_OFICIAL,
