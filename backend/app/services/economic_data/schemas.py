@@ -14,7 +14,7 @@ class InflationRecord(BaseModel):
 
 class DollarRecord(BaseModel):
     casa: str
-    compra: float
+    compra: Optional[float] = None
     venta: float
     fecha: date
 

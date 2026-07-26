@@ -24,11 +24,12 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch economic data")
     parser.add_argument("--inflation", action="store_true", help="Fetch inflation data")
     parser.add_argument("--dollars", action="store_true", help="Fetch dollar data")
+    parser.add_argument("--risk-country", action="store_true", help="Fetch country risk data")
     parser.add_argument("--all", action="store_true", help="Fetch all data")
     args = parser.parse_args()
 
     # Si no se especifica nada, por defecto obtener todo (comportamiento original)
-    fetch_all = args.all or (not args.inflation and not args.dollars)
+    fetch_all = args.all or (not args.inflation and not args.dollars and not args.risk_country)
 
     client = ArgentinaDatosClient()
     session = SessionLocal()
@@ -55,18 +56,19 @@ def main():
             else:
                 print("[inflacion_interanual] Endpoint no disponible, saltando.")
 
+        if fetch_all or args.risk_country:
+            records = client.get_risk_country()
+            saved = processor.save_inflation_data(records, IndicatorType.RISK_COUNTRY)
+            print(f"[riesgo_pais] Guardados: {saved} nuevos registros")
+
         if fetch_all or args.dollars:
-            # Dólar blue
-            records = client.get_dollar_blue()
-            saved = processor.save_dollar_data(records, IndicatorType.DOLLAR_BLUE)
-            print(f"[dollar_blue] Guardados: {saved} nuevos registros")
+            # Todas las casas de cambio — histórico combinado, ArgentinaDatos
+            all_dollars = client.get_all_dollars()
+            saved_per_casa = processor.save_all_dollars(all_dollars)
+            for casa, count in saved_per_casa.items():
+                print(f"[dolar_{casa}] Guardados: {count} nuevos registros")
 
-            # Dólar oficial
-            records = client.get_dollar_oficial()
-            saved = processor.save_dollar_data(records, IndicatorType.DOLLAR_OFICIAL)
-            print(f"[dollar_oficial] Guardados: {saved} nuevos registros")
-
-            # DolarAPI — cotizaciones actuales
+            # DolarAPI — fallback de cotización del día para blue/oficial/MEP/CCL
             dolar_client = DolarAPIClient()
             quotes = dolar_client.get_all_quotes()
             saved = processor.save_dolar_api_quotes(quotes)

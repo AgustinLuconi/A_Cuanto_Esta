@@ -33,18 +33,6 @@ class ArgentinaDatosClient:
             return []
         return [InflationRecord(**item) for item in data]
 
-    def get_dollar_blue(self) -> list[DollarRecord]:
-        data = self._get("/v1/cotizaciones/dolares/blue")
-        if data is None:
-            return []
-        return [DollarRecord(**item) for item in data]
-
-    def get_dollar_oficial(self) -> list[DollarRecord]:
-        data = self._get("/v1/cotizaciones/dolares/oficial")
-        if data is None:
-            return []
-        return [DollarRecord(**item) for item in data]
-
     def get_uva(self) -> list[UVARecord]:
         data = self._get("/v1/finanzas/indices/uva")
         if data is None:
