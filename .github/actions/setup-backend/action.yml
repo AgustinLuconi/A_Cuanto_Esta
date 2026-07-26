@@ -1,0 +1,12 @@
+# .github/actions/setup-backend/action.yml
+name: "Setup backend"
+description: "Instala Python 3.11 y las dependencias de backend/requirements.txt"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Instalar dependencias
+      shell: bash
+      run: pip install -r backend/requirements.txt
