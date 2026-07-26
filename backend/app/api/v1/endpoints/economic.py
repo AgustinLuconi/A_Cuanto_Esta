@@ -246,3 +246,27 @@ def get_inflation_history(
         .order_by(EconomicIndicator.date.desc())
         .all()
     )
+
+
+@router.get("/risk-country/history", response_model=list[schemas_eco.EconomicIndicator])
+def get_risk_country_history(
+    months: int = Query(12, ge=1, le=360, description="Últimos N meses de historial"),
+    db: Session = Depends(get_db),
+):
+    """
+    Historial de riesgo país (EMBI+).
+
+    Devuelve los registros ordenados por fecha descendente.
+    - `months`: ventana de tiempo (máximo 360 meses = 30 años; hay datos desde 1999)
+    """
+    cutoff = date.today() - relativedelta(months=months)
+
+    return (
+        db.query(EconomicIndicator)
+        .filter(
+            EconomicIndicator.indicator_type == IndicatorType.RISK_COUNTRY,
+            EconomicIndicator.date >= cutoff,
+        )
+        .order_by(EconomicIndicator.date.desc())
+        .all()
+    )
