@@ -55,6 +55,19 @@ export interface CurrentPrice {
   product_image_url: string | null;
 }
 
+export interface PriceHistoryRecord {
+  id: string;
+  product_id: string;
+  supermarket: Supermarket;
+  price: number;
+  was_on_sale: boolean;
+  original_price: number | null;
+  discount_percentage: number | null;
+  url: string | null;
+  in_stock: boolean;
+  scraped_at: string;
+}
+
 export interface ProductWithPrices extends Product {
   current_prices: CurrentPrice[];
   lowest_price: number | null;
