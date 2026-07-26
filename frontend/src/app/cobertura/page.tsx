@@ -231,7 +231,7 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
                 x={s.labelPos[0]} y={s.labelPos[1]}
                 textAnchor="middle" dominantBaseline="middle"
                 pointerEvents="none"
-                style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, fill: isActive ? "white" : "oklch(0.30 0.05 250)" }}
+                style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, fill: "white" }}
               >
                 {s.label}
               </text>
@@ -239,7 +239,7 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
                 x={s.labelPos[0]} y={s.labelPos[1] + 16}
                 textAnchor="middle" dominantBaseline="middle"
                 pointerEvents="none"
-                style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 600, fill: isActive ? "white" : "oklch(0.50 0.03 250)", opacity: isActive ? 0.95 : 0.85 }}
+                style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 600, fill: "white", opacity: isActive ? 0.95 : 0.85 }}
               >
                 {(REGION_COV[r.id] * 100).toFixed(0)}%
               </text>
