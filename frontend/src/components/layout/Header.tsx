@@ -16,15 +16,6 @@ function IconResults() {
   );
 }
 
-function IconProduct() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8l9-5 9 5-9 5z" />
-      <path d="M3 8v8l9 5 9-5V8" />
-    </svg>
-  );
-}
-
 function IconDashboard() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -37,7 +28,6 @@ function IconDashboard() {
 const TABS = [
   { label: "Buscar",     href: "/",           icon: <Icon.search width={14} height={14} /> },
   { label: "Resultados", href: "/resultados",  icon: <IconResults /> },
-  { label: "Producto",   href: "/producto",    icon: <IconProduct /> },
   { label: "Economía",   href: "/economia",    icon: <IconDashboard /> },
   { label: "Cobertura",  href: "/cobertura",   icon: <Icon.pin /> },
 ];
