@@ -105,6 +105,21 @@ correspondiente → inserta filas nuevas en `economic_indicators`.
   durante 60 días. Con cadencias diarias/cada 6h esto no debería ser un
   problema mientras el proyecto siga activo, pero si el repo queda inactivo
   mucho tiempo hay que reactivarlos a mano desde la pestaña Actions.
+- **Límite conocido y aceptado**: los 9 `populate_<super>_products.py`
+  capturan internamente cualquier excepción por término de búsqueda, la
+  loguean, hacen `session.rollback()` y retornan normalmente — siempre
+  terminan con exit code 0, incluso si *todos* los términos de búsqueda
+  fallaron para un supermercado. Esto significa que el step "Verificar
+  resultados" de `scrape-daily.yml` (que evalúa `steps.<id>.outcome`) sólo
+  puede detectar crashes duros (ej. `ImportError`, DB inalcanzable) — **no
+  puede detectar** el caso "la API de un supermercado cambió y el script
+  corrió entero sin traer ni un producto". Un check verde en
+  `scrape-daily.yml` no garantiza que se haya recolectado dato alguno.
+  Se decidió aceptar este trade-off deliberadamente: no se modifican los
+  scripts de scraping (fuera de alcance) ni se agregan pasos/workflows de
+  verificación adicionales (ej. contar filas nuevas en `price_history` por
+  corrida) para mantener la automatización simple. Queda documentado acá
+  para que un check verde no genere falsa confianza a futuro.
 
 ## Testing / validación
 
