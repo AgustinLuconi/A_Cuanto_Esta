@@ -1,16 +1,18 @@
 "use client";
 
+import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { getProduct, getPriceHistory, getInflationHistory } from "@/lib/api";
 import { buildPriceChartData, buildInflationFactors } from "@/lib/priceHistoryChart";
 import {
-  Price, SMSwatch, ImagePlaceholder, Icon, MultiLineChart, fmtPrice,
+  Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice,
 } from "@/components/design/components";
+import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
 import type { CurrentPrice } from "@/types";
 
 export default function ProductoPage({ params }: { params: { id: string } }) {
-  const { data: product, isLoading, isError } = useQuery({
+  const { data: product, isLoading, isError, error } = useQuery({
     queryKey: ["product", params.id],
     queryFn: () => getProduct(params.id),
   });
@@ -21,8 +23,8 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
   });
 
   const { data: inflationRaw = [] } = useQuery({
-    queryKey: ["inflation4m"],
-    queryFn: () => getInflationHistory(4, "monthly"),
+    queryKey: ["inflation6m"],
+    queryFn: () => getInflationHistory(6, "monthly"),
     staleTime: 30 * 60 * 1000,
   });
 
@@ -35,10 +37,13 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
   }
 
   if (isError || !product) {
+    const isNotFound = axios.isAxiosError(error) && error.response?.status === 404;
     return (
       <div className="page" style={{ textAlign: "center", padding: "64px 0" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-        <p style={{ color: "var(--fg-3)", marginBottom: 12 }}>Producto no encontrado</p>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{isNotFound ? "🔍" : "⚠️"}</div>
+        <p style={{ color: "var(--fg-3)", marginBottom: 12 }}>
+          {isNotFound ? "Producto no encontrado" : "No pudimos cargar este producto. Intentá de nuevo."}
+        </p>
         <Link href="/resultados" style={{ fontSize: 13, color: "var(--primary)" }}>
           ← Volver a resultados
         </Link>
@@ -47,6 +52,9 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
   }
 
   const sortedPrices = [...product.current_prices].sort((a, b) => a.price - b.price);
+  const categoryLabel = CATEGORIES_DESIGN.find(
+    (c) => c.id === BACKEND_TO_DESIGN[product.category]
+  )?.name;
   const { labels, series } = priceHistory.length > 0 ? buildPriceChartData(priceHistory) : { labels: [], series: {} };
   // Con un único día de historial, MultiLineChart no puede trazar una línea (división por
   // labels.length - 1 en su escala X produce NaN). Se exige al menos 2 días distintos antes
@@ -69,6 +77,7 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
         <div>
           <div style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
             {product.brand}
+            {categoryLabel && <> · {categoryLabel}</>}
           </div>
           <h1 style={{ fontSize: 26, marginBottom: 8 }}>{product.full_name}</h1>
           {product.barcode && (
@@ -92,31 +101,38 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
       )}
 
       {/* PRECIOS POR SUPERMERCADO */}
-      <h2 style={{ fontSize: 16, marginBottom: 12 }}>Precios por supermercado</h2>
-      <div className="col" style={{ gap: 8, marginBottom: 32 }}>
-        {sortedPrices.map((cp: CurrentPrice, i: number) => (
-          <div key={cp.supermarket} className="card" style={{
-            padding: 14, display: "flex", alignItems: "center", gap: 14,
-            borderColor: i === 0 ? "oklch(0.85 0.07 150)" : undefined,
-          }}>
-            <SMSwatch sm={cp.supermarket} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>{cp.supermarket.replace("_", " ")}</div>
-              <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-                {i === 0 && <span className="badge cheapest" style={{ fontSize: 10.5 }}>⭐ Más barato</span>}
-                {cp.was_on_sale && <span className="badge" style={{ fontSize: 10.5 }}>En oferta</span>}
-                {!cp.in_stock && <span className="badge" style={{ fontSize: 10.5, color: "var(--fg-4)" }}>Sin stock</span>}
-              </div>
-            </div>
-            <Price value={cp.price} size="lg" />
-            {cp.url && (
-              <a href={cp.url} target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ fontSize: 12 }}>
-                Ver <Icon.arrowR />
-              </a>
-            )}
+      {sortedPrices.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 16, marginBottom: 12 }}>Precios por supermercado</h2>
+          <div className="col" style={{ gap: 8, marginBottom: 32 }}>
+            {sortedPrices.map((cp: CurrentPrice, i: number) => {
+              const smName = SM_BY_ID[cp.supermarket]?.name ?? cp.supermarket.replace("_", " ");
+              return (
+                <div key={cp.supermarket} className="card" style={{
+                  padding: 14, display: "flex", alignItems: "center", gap: 14,
+                  borderColor: i === 0 ? "oklch(0.85 0.07 150)" : undefined,
+                }}>
+                  <SMSwatch sm={cp.supermarket} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{smName}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                      {i === 0 && <span className="badge cheapest" style={{ fontSize: 10.5 }}>⭐ Más barato</span>}
+                      {cp.was_on_sale && <span className="badge" style={{ fontSize: 10.5 }}>En oferta</span>}
+                      {!cp.in_stock && <span className="badge" style={{ fontSize: 10.5, color: "var(--fg-4)" }}>Sin stock</span>}
+                    </div>
+                  </div>
+                  <Price value={cp.price} size="lg" />
+                  {cp.url && (
+                    <a href={cp.url} target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ fontSize: 12 }}>
+                      Ver en {smName} <Icon.arrowR />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {/* GRÁFICO HISTÓRICO */}
       <h2 style={{ fontSize: 16, marginBottom: 12 }}>Historial de precios</h2>

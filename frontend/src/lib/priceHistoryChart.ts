@@ -49,6 +49,9 @@ export function buildPriceChartData(records: PriceHistoryRecord[]): {
 }
 
 export function buildInflationFactors(
+  // labels debe venir ordenado ascendente — es el contrato que ya garantiza
+  // buildPriceChartData (única fuente de labels en este archivo), y del que
+  // depende el forward-fill de más abajo (recorre en orden cronológico).
   labels: string[],
   inflationMonthly: Array<{ date: string; value: number }>
 ): number[] {

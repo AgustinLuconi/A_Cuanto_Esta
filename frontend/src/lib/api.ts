@@ -56,7 +56,7 @@ export async function getProductsList(
 }
 
 export async function getProduct(id: string): Promise<ProductWithPrices> {
-  const { data } = await api.get<ProductWithPrices>(`/products/${id}`);
+  const { data } = await api.get<ProductWithPrices>(`/products/${encodeURIComponent(id)}`);
   return data;
 }
 
@@ -66,7 +66,7 @@ export async function getPriceHistory(
 ): Promise<PriceHistoryRecord[]> {
   try {
     const { data } = await api.get<PriceHistoryRecord[]>(
-      `/products/${productId}/prices/history?days=${days}`
+      `/products/${encodeURIComponent(productId)}/prices/history?days=${days}`
     );
     return data.map((r) => ({ ...r, price: Number(r.price) }));
   } catch (err) {

@@ -167,15 +167,16 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
 
   const smIds = Object.keys(series).filter(k => !smFilter || smFilter.includes(k));
 
+  const startMedian = smIds.map(k => series[k][0]).sort((a,b)=>a-b)[Math.floor(smIds.length/2)];
+  const infScaled = inflation ? inflation.map(v => startMedian * v) : null;
+
   const allPrices = smIds.flatMap(k => series[k]);
+  if (showInflation && infScaled) allPrices.push(...infScaled);
   let minP = Math.min(...allPrices);
   let maxP = Math.max(...allPrices);
   const span = maxP - minP;
   minP -= span * 0.12;
   maxP += span * 0.18;
-
-  const startMedian = smIds.map(k => series[k][0]).sort((a,b)=>a-b)[Math.floor(smIds.length/2)];
-  const infScaled = inflation ? inflation.map(v => startMedian * v) : null;
 
   const xAt = (i: number) => pad.l + (i / (Math.max(1, labels.length - 1))) * innerW;
   const yAt = (v: number) => pad.t + (1 - (v - minP) / ((maxP - minP) || 1)) * innerH;
