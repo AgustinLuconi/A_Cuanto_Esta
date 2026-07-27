@@ -15,10 +15,9 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
     queryFn: () => getProduct(params.id),
   });
 
-  const { data: priceHistory = [] } = useQuery({
+  const { data: priceHistory = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ["priceHistory", params.id],
     queryFn: () => getPriceHistory(params.id, 90),
-    enabled: !!product,
   });
 
   const { data: inflationRaw = [] } = useQuery({
@@ -122,7 +121,11 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
       {/* GRÁFICO HISTÓRICO */}
       <h2 style={{ fontSize: 16, marginBottom: 12 }}>Historial de precios</h2>
       <div className="card" style={{ padding: 22 }}>
-        {hasChart ? (
+        {isLoadingHistory ? (
+          <p style={{ color: "var(--fg-4)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>
+            Cargando historial…
+          </p>
+        ) : hasChart ? (
           <MultiLineChart labels={labels} series={series} inflation={inflation} height={320} />
         ) : (
           <p style={{ color: "var(--fg-4)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>

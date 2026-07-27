@@ -68,7 +68,7 @@ export async function getPriceHistory(
     const { data } = await api.get<PriceHistoryRecord[]>(
       `/products/${productId}/prices/history?days=${days}`
     );
-    return data;
+    return data.map((r) => ({ ...r, price: Number(r.price) }));
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 404) {
       return [];

@@ -68,16 +68,14 @@ export function buildInflationFactors(
   const baseFactor = factorByMonth.get(baseMonth) ?? 1;
 
   // Forward-fill: mantener el último factor conocido si un mes no tiene dato.
-  // Solo normalizar cuando tenemos datos reales; forward-fill mantiene el factor sin normalizar.
-  let lastKnownFactor = 1;
+  // Siempre se normaliza dividiendo por baseFactor, tanto con dato real como en forward-fill.
+  let lastKnownFactor = baseFactor;
   return labels.map((day) => {
     const month = day.slice(0, 7);
     const factor = factorByMonth.get(month);
     if (factor != null) {
       lastKnownFactor = factor;
-      return factor / baseFactor; // Normalizar datos reales
-    } else {
-      return lastKnownFactor;     // Forward-fill sin normalizar
     }
+    return lastKnownFactor / baseFactor;
   });
 }
