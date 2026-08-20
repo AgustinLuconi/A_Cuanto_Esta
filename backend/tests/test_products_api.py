@@ -1,6 +1,11 @@
 """
 Pruebas de integración para los endpoints de productos (/api/v1/products).
 """
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import uuid
 from fastapi.testclient import TestClient
 from app.main import app

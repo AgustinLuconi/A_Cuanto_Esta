@@ -1,6 +1,11 @@
 """
 Pruebas unitarias para las funciones de normalización del scraper.
 """
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pytest
 from app.models.product import ProductCategory, ProductUnit
 from app.scrapers.utils.normalizer import (
