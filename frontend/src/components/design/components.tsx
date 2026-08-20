@@ -125,8 +125,12 @@ export function Sparkline({ data, color = "currentColor", width = 80, height = 2
     const y = pad + (1 - (v - min) / (max - min || 1)) * (height - pad * 2);
     return [x, y];
   });
-  const d = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-  const area = d + ` L ${pts[pts.length-1][0].toFixed(1)} ${height-pad} L ${pts[0][0].toFixed(1)} ${height-pad} Z`;
+  const d = pts.map((p, i) => (i === 0 ? "M" : "L") + (p[0] ?? 0).toFixed(1) + " " + (p[1] ?? 0).toFixed(1)).join(" ");
+  const lastPt = pts[pts.length - 1];
+  const firstPt = pts[0];
+  const lastX = lastPt ? (lastPt[0] ?? 0).toFixed(1) : "0";
+  const firstX = firstPt ? (firstPt[0] ?? 0).toFixed(1) : "0";
+  const area = d + ` L ${lastX} ${height-pad} L ${firstX} ${height-pad} Z`;
   return (
     <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ height }}>
       <path d={area} fill={color} opacity="0.08" />
@@ -153,7 +157,8 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
   useEffect(() => {
     if (!ref.current) return;
     const ro = new ResizeObserver(entries => {
-      setWidth(entries[0].contentRect.width);
+      const first = entries[0];
+      if (first) setWidth(first.contentRect.width);
     });
     ro.observe(ref.current);
     return () => ro.disconnect();
@@ -167,13 +172,14 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
 
   const smIds = Object.keys(series).filter(k => !smFilter || smFilter.includes(k));
 
-  const startMedian = smIds.map(k => series[k][0]).sort((a,b)=>a-b)[Math.floor(smIds.length/2)];
+  const startValues = smIds.map(k => series[k]?.[0]).filter((v): v is number => v !== undefined).sort((a, b) => a - b);
+  const startMedian = startValues[Math.floor(startValues.length / 2)] ?? 0;
   const infScaled = inflation ? inflation.map(v => startMedian * v) : null;
 
-  const allPrices = smIds.flatMap(k => series[k]);
+  const allPrices = smIds.flatMap(k => series[k] ?? []);
   if (showInflation && infScaled) allPrices.push(...infScaled);
-  let minP = Math.min(...allPrices);
-  let maxP = Math.max(...allPrices);
+  let minP = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+  let maxP = allPrices.length > 0 ? Math.max(...allPrices) : 100;
   const span = maxP - minP;
   minP -= span * 0.12;
   maxP += span * 0.18;
@@ -222,7 +228,8 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
         )}
         {smIds.map(k => {
           const sm = SM_MAP[k] || { color: "var(--sm-8)" };
-          const path = series[k].map((v, i) => (i === 0 ? "M" : "L") + xAt(i).toFixed(1) + " " + yAt(v).toFixed(1)).join(" ");
+          const sList = series[k] ?? [];
+          const path = sList.map((v, i) => (i === 0 ? "M" : "L") + xAt(i).toFixed(1) + " " + yAt(v).toFixed(1)).join(" ");
           return (
             <path key={k} d={path}
               stroke={sm.color} strokeWidth="2" fill="none"
@@ -234,10 +241,11 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
             <line x1={hover.x} x2={hover.x} y1={pad.t} y2={h - pad.b} stroke="var(--fg-2)" strokeDasharray="2 3" opacity="0.3"/>
             {smIds.map(k => {
               const sm = SM_MAP[k] || { color: "var(--sm-8)" };
-              return <circle key={k} cx={hover.x} cy={yAt(series[k][hover.idx])} r="4" fill="white" stroke={sm.color} strokeWidth="2"/>;
+              const val = series[k]?.[hover.idx] ?? 0;
+              return <circle key={k} cx={hover.x} cy={yAt(val)} r="4" fill="white" stroke={sm.color} strokeWidth="2"/>;
             })}
-            {showInflation && infScaled && (
-              <circle cx={hover.x} cy={yAt(infScaled[hover.idx])} r="3.5" fill="var(--warn)" stroke="white" strokeWidth="1.5"/>
+            {showInflation && infScaled && infScaled[hover.idx] !== undefined && (
+              <circle cx={hover.x} cy={yAt(infScaled[hover.idx] ?? 0)} r="3.5" fill="var(--warn)" stroke="white" strokeWidth="1.5"/>
             )}
           </g>
         )}
@@ -245,25 +253,26 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
       {hover && (
         <div className="chart-tooltip" style={{ left: hover.x, top: pad.t }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>{labels[hover.idx]}</div>
-          {smIds.slice().sort((a,b)=>series[a][hover.idx]-series[b][hover.idx]).map(k => {
+          {smIds.slice().sort((a,b)=> (series[a]?.[hover.idx] ?? 0) - (series[b]?.[hover.idx] ?? 0)).map(k => {
             const sm = SM_MAP[k] || { name: k, color: "var(--sm-8)" };
+            const val = series[k]?.[hover.idx] ?? 0;
             return (
               <div className="ct-row" key={k} style={{ justifyContent: "space-between", gap: 12 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <span className="ct-dot" style={{ background: sm.color }} />
                   {sm.name}
                 </span>
-                <span className="mono">${fmtPrice(series[k][hover.idx])}</span>
+                <span className="mono">${fmtPrice(val)}</span>
               </div>
             );
           })}
-          {showInflation && infScaled && (
+          {showInflation && infScaled && infScaled[hover.idx] !== undefined && (
             <div className="ct-row" style={{ justifyContent: "space-between", gap: 12, borderTop: "1px solid rgba(255,255,255,0.15)", marginTop: 4, paddingTop: 4 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <span className="ct-dot" style={{ background: "var(--warn)" }} />
                 Inflación
               </span>
-              <span className="mono">${fmtPrice(infScaled[hover.idx])}</span>
+              <span className="mono">${fmtPrice(infScaled[hover.idx] ?? 0)}</span>
             </div>
           )}
         </div>
@@ -287,7 +296,10 @@ export function BarChart({ data, height = 240, color = "var(--primary)", valueFm
 
   useEffect(() => {
     if (!ref.current) return;
-    const ro = new ResizeObserver(entries => setWidth(entries[0].contentRect.width));
+    const ro = new ResizeObserver(entries => {
+      const first = entries[0];
+      if (first) setWidth(first.contentRect.width);
+    });
     ro.observe(ref.current);
     return () => ro.disconnect();
   }, []);
@@ -362,7 +374,10 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
 
   useEffect(() => {
     if (!ref.current) return;
-    const ro = new ResizeObserver(entries => setWidth(entries[0].contentRect.width));
+    const ro = new ResizeObserver(entries => {
+      const first = entries[0];
+      if (first) setWidth(first.contentRect.width);
+    });
     ro.observe(ref.current);
     return () => ro.disconnect();
   }, []);
@@ -417,19 +432,25 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
         <path d={areaFor(b)} fill={bColor} opacity="0.06"/>
         <path d={pathFor(a)} stroke={aColor} strokeWidth="2" fill="none"/>
         <path d={pathFor(b)} stroke={bColor} strokeWidth="2" fill="none"/>
-        <g>
-          <circle cx={xAt(a.length-1)} cy={yAt(a[a.length-1])} r="4" fill={aColor}/>
-          <text x={xAt(a.length-1)+10} y={yAt(a[a.length-1])} dominantBaseline="central"
-            fill={aColor} fontSize="11" fontWeight="600">${fmtPrice(a[a.length-1])}</text>
-          <circle cx={xAt(b.length-1)} cy={yAt(b[b.length-1])} r="4" fill={bColor}/>
-          <text x={xAt(b.length-1)+10} y={yAt(b[b.length-1])} dominantBaseline="central"
-            fill={bColor} fontSize="11" fontWeight="600">${fmtPrice(b[b.length-1])}</text>
-        </g>
+        {(() => {
+          const lastValA = a[a.length - 1] ?? 0;
+          const lastValB = b[b.length - 1] ?? 0;
+          return (
+            <g>
+              <circle cx={xAt(a.length-1)} cy={yAt(lastValA)} r="4" fill={aColor}/>
+              <text x={xAt(a.length-1)+10} y={yAt(lastValA)} dominantBaseline="central"
+                fill={aColor} fontSize="11" fontWeight="600">${fmtPrice(lastValA)}</text>
+              <circle cx={xAt(b.length-1)} cy={yAt(lastValB)} r="4" fill={bColor}/>
+              <text x={xAt(b.length-1)+10} y={yAt(lastValB)} dominantBaseline="central"
+                fill={bColor} fontSize="11" fontWeight="600">${fmtPrice(lastValB)}</text>
+            </g>
+          );
+        })()}
         {hover && (
           <g>
             <line x1={hover.x} x2={hover.x} y1={pad.t} y2={height-pad.b} stroke="var(--fg-2)" strokeDasharray="2 3" opacity="0.3"/>
-            <circle cx={hover.x} cy={yAt(a[hover.idx])} r="4" fill="white" stroke={aColor} strokeWidth="2"/>
-            <circle cx={hover.x} cy={yAt(b[hover.idx])} r="4" fill="white" stroke={bColor} strokeWidth="2"/>
+            <circle cx={hover.x} cy={yAt(a[hover.idx] ?? 0)} r="4" fill="white" stroke={aColor} strokeWidth="2"/>
+            <circle cx={hover.x} cy={yAt(b[hover.idx] ?? 0)} r="4" fill="white" stroke={bColor} strokeWidth="2"/>
           </g>
         )}
       </svg>
@@ -438,11 +459,11 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
           <div style={{ fontWeight: 700, marginBottom: 4 }}>{labels[hover.idx]}</div>
           <div className="ct-row" style={{ justifyContent: "space-between", gap: 12 }}>
             <span style={{ display:"flex", alignItems:"center", gap: 5 }}><span className="ct-dot" style={{ background: aColor }}/>{aLabel}</span>
-            <span className="mono">${fmtPrice(a[hover.idx])}</span>
+            <span className="mono">${fmtPrice(a[hover.idx] ?? 0)}</span>
           </div>
           <div className="ct-row" style={{ justifyContent: "space-between", gap: 12 }}>
             <span style={{ display:"flex", alignItems:"center", gap: 5 }}><span className="ct-dot" style={{ background: bColor }}/>{bLabel}</span>
-            <span className="mono">${fmtPrice(b[hover.idx])}</span>
+            <span className="mono">${fmtPrice(b[hover.idx] ?? 0)}</span>
           </div>
         </div>
       )}

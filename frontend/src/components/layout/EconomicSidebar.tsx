@@ -29,7 +29,10 @@ function fmtARS(v: number | null | undefined): string {
 
 function mesAnio(isoDate: string | null): string {
   if (!isoDate) return "último dato";
-  const [year, month] = isoDate.split("-").map(Number);
+  const parts = isoDate.split("-").map(Number);
+  const year = parts[0];
+  const month = parts[1];
+  if (!year || !month || month < 1 || month > 12) return "último dato";
   return `${MESES[month - 1]} ${year}`;
 }
 

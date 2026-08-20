@@ -83,3 +83,37 @@ def test_get_estado_returns_none_on_error():
         estado = client.get_estado()
 
     assert estado is None
+
+
+def test_get_retries_on_transient_502_error_and_succeeds():
+    mock_502 = MagicMock()
+    mock_502.status_code = 502
+    err_502 = httpx.HTTPStatusError("502 Bad Gateway", request=MagicMock(), response=mock_502)
+    resp_success = _fake_response({"estado": "Correcto"})
+
+    with patch(
+        "app.services.economic_data.client.httpx.get",
+        side_effect=[err_502, resp_success],
+    ) as mock_get:
+        client = ArgentinaDatosClient(max_retries=3, retry_backoff=0.01)
+        estado = client.get_estado()
+
+    assert estado == "Correcto"
+    assert mock_get.call_count == 2
+
+
+def test_get_retries_up_to_max_attempts_and_returns_none():
+    mock_502 = MagicMock()
+    mock_502.status_code = 502
+    err_502 = httpx.HTTPStatusError("502 Bad Gateway", request=MagicMock(), response=mock_502)
+
+    with patch(
+        "app.services.economic_data.client.httpx.get",
+        side_effect=err_502,
+    ) as mock_get:
+        client = ArgentinaDatosClient(max_retries=3, retry_backoff=0.01)
+        estado = client.get_estado()
+
+    assert estado is None
+    assert mock_get.call_count == 3
+

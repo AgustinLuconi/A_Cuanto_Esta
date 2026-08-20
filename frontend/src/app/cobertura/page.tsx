@@ -34,7 +34,13 @@ const TOTAL_PRODUCTS = 3295;
 export default function CoberturaPage() {
   const [active, setActive] = useState("amba");
   const router = useRouter();
-  const region = REGIONS.find((r) => r.id === active)!;
+  const region = REGIONS.find((r) => r.id === active) ?? {
+    id: "amba",
+    name: "AMBA",
+    provs: ["Buenos Aires (GBA)", "Ciudad de Buenos Aires"],
+  };
+  const covVal = REGION_COV[region.id] ?? 0.8;
+  const smList = REGION_SM[region.id] ?? [];
 
   return (
     <div className="page page-wide">
@@ -98,14 +104,14 @@ export default function CoberturaPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: "var(--fg-2)", fontWeight: 600 }}>Productos comparables</span>
                 <span className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--primary)" }}>
-                  {(REGION_COV[region.id] * 100).toFixed(0)}%
+                  {(covVal * 100).toFixed(0)}%
                 </span>
               </div>
               <div style={{ height: 8, background: "var(--bg-2)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ width: `${REGION_COV[region.id] * 100}%`, height: "100%", background: "var(--primary)", borderRadius: 4 }} />
+                <div style={{ width: `${covVal * 100}%`, height: "100%", background: "var(--primary)", borderRadius: 4 }} />
               </div>
               <div style={{ fontSize: 11.5, color: "var(--fg-3)", marginTop: 5 }}>
-                <strong className="mono">{Math.floor(TOTAL_PRODUCTS * REGION_COV[region.id]).toLocaleString("es-AR")}</strong> de {TOTAL_PRODUCTS.toLocaleString("es-AR")} productos relevados acá
+                <strong className="mono">{Math.floor(TOTAL_PRODUCTS * covVal).toLocaleString("es-AR")}</strong> de {TOTAL_PRODUCTS.toLocaleString("es-AR")} productos relevados acá
               </div>
             </div>
 
@@ -115,7 +121,7 @@ export default function CoberturaPage() {
                 Supermercados que operan
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-                {REGION_SM[region.id].map((s) => (
+                {smList.map((s) => (
                   <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--bg-2)", borderRadius: 8 }}>
                     <SMSwatch sm={s} />
                     <span style={{ fontSize: 12.5, fontWeight: 500 }}>{SM_BY_ID[s]?.name ?? s}</span>
@@ -140,6 +146,8 @@ export default function CoberturaPage() {
             </div>
             {REGIONS.map((r) => {
               const isActive = r.id === active;
+              const rCov = REGION_COV[r.id] ?? 0.8;
+              const rSmList = REGION_SM[r.id] ?? [];
               return (
                 <button
                   key={r.id}
@@ -155,18 +163,18 @@ export default function CoberturaPage() {
                 >
                   <div style={{
                     width: 36, height: 36, borderRadius: 8,
-                    background: isActive ? "var(--primary)" : `oklch(${0.95 - REGION_COV[r.id] * 0.5} 0.05 250)`,
+                    background: isActive ? "var(--primary)" : `oklch(${0.95 - rCov * 0.5} 0.05 250)`,
                     border: "1px solid var(--border)",
                     display: "grid", placeItems: "center",
                     fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700,
                     color: "white",
                   }}>
-                    {(REGION_COV[r.id] * 100).toFixed(0)}
+                    {(rCov * 100).toFixed(0)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 13.5 }}>{r.name}</div>
                     <div style={{ fontSize: 11.5, color: "var(--fg-3)" }}>
-                      {REGION_SM[r.id].length} supermercados · {r.provs.length} provincias
+                      {rSmList.length} supermercados · {r.provs.length} provincias
                     </div>
                   </div>
                   <Icon.arrowR style={{ color: "var(--fg-4)" }} />
@@ -196,7 +204,7 @@ const SHAPES: Record<string, { label: string; d: string; labelPos: [number, numb
 function ArgMap({ active, setActive }: { active: string; setActive: (id: string) => void }) {
   const fillFor = (id: string) => {
     if (id === active) return "var(--primary)";
-    const c = REGION_COV[id];
+    const c = REGION_COV[id] ?? 0.8;
     return `oklch(${0.96 - c * 0.55} 0.06 250)`;
   };
 
@@ -211,8 +219,9 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
         <rect x="0" y="0" width="440" height="680" fill="url(#ocean)" opacity="0.5" />
 
         {REGIONS.map((r) => {
-          const s = SHAPES[r.id];
+          const s = SHAPES[r.id] ?? { label: r.name, d: "", labelPos: [0, 0] as [number, number] };
           const isActive = active === r.id;
+          const rCov = REGION_COV[r.id] ?? 0.8;
           return (
             <g key={r.id}>
               <path
@@ -241,7 +250,7 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
                 pointerEvents="none"
                 style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 600, fill: "white", opacity: isActive ? 0.95 : 0.85 }}
               >
-                {(REGION_COV[r.id] * 100).toFixed(0)}%
+                {(rCov * 100).toFixed(0)}%
               </text>
             </g>
           );

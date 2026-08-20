@@ -3,29 +3,40 @@ Clientes HTTP para APIs económicas argentinas.
 - ArgentinaDatosClient: datos históricos (argentinadatos.com)
 - DolarAPIClient: cotizaciones en tiempo real (dolarapi.com)
 """
+import time
 import httpx
 from app.config.settings import settings
 from app.services.economic_data.schemas import InflationRecord, DollarRecord, UVARecord, DolarAPIQuote
 
 
 class ArgentinaDatosClient:
-    def __init__(self):
+    def __init__(self, max_retries: int = 3, retry_backoff: float = 1.0):
         self.base_url = settings.ARGENTINA_DATOS_API_URL
         self.timeout = settings.SCRAPING_TIMEOUT
+        self.max_retries = max_retries
+        self.retry_backoff = retry_backoff
 
-    def _get(self, endpoint: str) -> list | None:
-        """Realiza GET y retorna el JSON parseado, o None si hay error."""
+    def _get(self, endpoint: str) -> list | dict | None:
+        """Realiza GET con reintentos y retorna el JSON parseado, o None si hay error."""
         url = f"{self.base_url}{endpoint}"
-        try:
-            response = httpx.get(url, timeout=self.timeout, follow_redirects=True)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            print(f"[client] HTTP {e.response.status_code} en {url}")
-            return None
-        except httpx.HTTPError as e:
-            print(f"[client] Error de red en {url}: {e}")
-            return None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = httpx.get(url, timeout=self.timeout, follow_redirects=True)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                print(f"[client] HTTP {e.response.status_code} en {url} (intento {attempt}/{self.max_retries})")
+                if e.response.status_code >= 500 and attempt < self.max_retries:
+                    time.sleep(self.retry_backoff * attempt)
+                    continue
+                return None
+            except httpx.HTTPError as e:
+                print(f"[client] Error de red en {url}: {e} (intento {attempt}/{self.max_retries})")
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_backoff * attempt)
+                    continue
+                return None
+        return None
 
     def get_inflation(self) -> list[InflationRecord]:
         data = self._get("/v1/finanzas/indices/inflacion")

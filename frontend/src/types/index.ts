@@ -1,128 +1,155 @@
-export type Supermarket =
-  | "carrefour"
-  | "coto"
-  | "disco"
-  | "atomo"
-  | "vea"
-  | "jumbo"
-  | "dia"
-  | "la_anonima"
-  | "chango_mas";
+import { z } from "zod";
 
-export type ProductCategory =
-  | "alimentos"
-  | "bebidas"
-  | "limpieza"
-  | "higiene_personal"
-  | "lacteos"
-  | "carnes"
-  | "frutas_verduras"
-  | "panaderia"
-  | "congelados"
-  | "snacks"
-  | "desayuno"
-  | "otros";
+// Single Source of Truth Arrays using `as const`
+export const SUPERMARKETS = [
+  "carrefour",
+  "coto",
+  "disco",
+  "atomo",
+  "vea",
+  "jumbo",
+  "dia",
+  "la_anonima",
+  "chango_mas",
+] as const;
 
-export type ProductUnit = "kg" | "g" | "l" | "ml" | "unidad" | "pack";
+export const PRODUCT_CATEGORIES = [
+  "alimentos",
+  "bebidas",
+  "limpieza",
+  "higiene_personal",
+  "lacteos",
+  "carnes",
+  "frutas_verduras",
+  "panaderia",
+  "congelados",
+  "snacks",
+  "desayuno",
+  "otros",
+] as const;
 
-export interface Product {
-  id: string;
-  name: string;
-  normalized_name: string;
-  brand: string | null;
-  category: ProductCategory;
-  unit: ProductUnit;
-  quantity: string | null;
-  description: string | null;
-  image_url: string | null;
-  barcode: string | null;
-  created_at: string;
-  updated_at: string;
-  full_name: string;
-}
+export const PRODUCT_UNITS = ["kg", "g", "l", "ml", "unidad", "pack"] as const;
 
-export interface CurrentPrice {
-  supermarket: Supermarket;
-  price: number;
-  was_on_sale: boolean;
-  original_price: number | null;
-  discount_percentage: number | null;
-  url: string | null;
-  last_updated: string;
-  in_stock: boolean;
-  province: string | null;
-  region: string | null;
-  product_image_url: string | null;
-}
+// Zod Schemas
+export const SupermarketSchema = z.enum(SUPERMARKETS);
+export type Supermarket = z.infer<typeof SupermarketSchema>;
 
-export interface PriceHistoryRecord {
-  id: string;
-  product_id: string;
-  supermarket: Supermarket;
-  price: number;
-  was_on_sale: boolean;
-  original_price: number | null;
-  discount_percentage: number | null;
-  url: string | null;
-  in_stock: boolean;
-  scraped_at: string;
-}
+export const ProductCategorySchema = z.enum(PRODUCT_CATEGORIES);
+export type ProductCategory = z.infer<typeof ProductCategorySchema>;
 
-export interface ProductWithPrices extends Product {
-  current_prices: CurrentPrice[];
-  lowest_price: number | null;
-  highest_price: number | null;
-  price_difference: number | null;
-}
+export const ProductUnitSchema = z.enum(PRODUCT_UNITS);
+export type ProductUnit = z.infer<typeof ProductUnitSchema>;
 
-export interface EconomicContext {
-  inflation_monthly: number | null;
-  inflation_yearly: number | null;
-  dollar_blue: number | null;
-  dollar_oficial: number | null;
-  dollar_mayorista: number | null;
-  dollar_mep: number | null;
-  dollar_ccl: number | null;
-  dollar_cripto: number | null;
-  dollar_tarjeta: number | null;
-  uva_index: number | null;
-  plazo_fijo_rate: number | null;
-  risk_country: number | null;
-  last_updated: string;
-  inflation_monthly_change: number | null;
-  inflation_monthly_date: string | null;
-  dollar_blue_change: number | null;
-  dollar_oficial_change: number | null;
-  dollar_mayorista_change: number | null;
-  dollar_mep_change: number | null;
-  dollar_ccl_change: number | null;
-  dollar_cripto_change: number | null;
-  dollar_tarjeta_change: number | null;
-  risk_country_change: number | null;
-  inflation_ytd: number | null;
-}
+export const ProductSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  normalized_name: z.string(),
+  brand: z.string().nullable().default(null),
+  category: ProductCategorySchema,
+  unit: ProductUnitSchema,
+  quantity: z.string().nullable().default(null),
+  description: z.string().nullable().default(null),
+  image_url: z.string().nullable().default(null),
+  barcode: z.string().nullable().default(null),
+  created_at: z.string(),
+  updated_at: z.string(),
+  full_name: z.string(),
+});
+export type Product = z.infer<typeof ProductSchema>;
 
-export interface EconomicIndicator {
-  id: string;
-  indicator_type: string;
-  value: string | number;
-  date: string;
-  source: string;
-  created_at: string;
-  updated_at: string;
-}
+export const CurrentPriceSchema = z.object({
+  supermarket: SupermarketSchema,
+  price: z.number(),
+  was_on_sale: z.boolean().default(false),
+  original_price: z.number().nullable().default(null),
+  discount_percentage: z.number().nullable().default(null),
+  url: z.string().nullable().default(null),
+  last_updated: z.string(),
+  in_stock: z.boolean().default(true),
+  province: z.string().nullable().default(null),
+  region: z.string().nullable().default(null),
+  product_image_url: z.string().nullable().default(null),
+});
+export type CurrentPrice = z.infer<typeof CurrentPriceSchema>;
 
-export interface ProductList {
-  items: Product[];
-  total: number;
-  skip: number;
-  limit: number;
-  supermarket_counts?: Record<string, number>;
-  variation_counts?: Record<string, number>;
-}
+export const PriceHistoryRecordSchema = z.object({
+  id: z.string(),
+  product_id: z.string(),
+  supermarket: SupermarketSchema,
+  price: z.preprocess((val) => Number(val), z.number()),
+  was_on_sale: z.boolean().default(false),
+  original_price: z.number().nullable().default(null),
+  discount_percentage: z.number().nullable().default(null),
+  url: z.string().nullable().default(null),
+  in_stock: z.boolean().default(true),
+  scraped_at: z.string(),
+});
+export type PriceHistoryRecord = z.infer<typeof PriceHistoryRecordSchema>;
 
-export interface ProductCount {
-  count: number;
-}
+export const ProductWithPricesSchema = ProductSchema.extend({
+  current_prices: z.array(CurrentPriceSchema).default([]),
+  lowest_price: z.number().nullable().default(null),
+  highest_price: z.number().nullable().default(null),
+  price_difference: z.number().nullable().default(null),
+});
+export type ProductWithPrices = z.infer<typeof ProductWithPricesSchema>;
 
-export type SupermarketLogos = Record<Supermarket, string>;
+export const EconomicContextSchema = z.object({
+  inflation_monthly: z.number().nullable().default(null),
+  inflation_yearly: z.number().nullable().default(null),
+  dollar_blue: z.number().nullable().default(null),
+  dollar_oficial: z.number().nullable().default(null),
+  dollar_mayorista: z.number().nullable().default(null),
+  dollar_mep: z.number().nullable().default(null),
+  dollar_ccl: z.number().nullable().default(null),
+  dollar_cripto: z.number().nullable().default(null),
+  dollar_tarjeta: z.number().nullable().default(null),
+  uva_index: z.number().nullable().default(null),
+  plazo_fijo_rate: z.number().nullable().default(null),
+  risk_country: z.number().nullable().default(null),
+  last_updated: z.string(),
+  inflation_monthly_change: z.number().nullable().default(null),
+  inflation_monthly_date: z.string().nullable().default(null),
+  dollar_blue_change: z.number().nullable().default(null),
+  dollar_oficial_change: z.number().nullable().default(null),
+  dollar_mayorista_change: z.number().nullable().default(null),
+  dollar_mep_change: z.number().nullable().default(null),
+  dollar_ccl_change: z.number().nullable().default(null),
+  dollar_cripto_change: z.number().nullable().default(null),
+  dollar_tarjeta_change: z.number().nullable().default(null),
+  risk_country_change: z.number().nullable().default(null),
+  inflation_ytd: z.number().nullable().default(null),
+});
+export type EconomicContext = z.infer<typeof EconomicContextSchema>;
+
+export const EconomicIndicatorSchema = z.object({
+  id: z.string(),
+  indicator_type: z.string(),
+  value: z.union([z.string(), z.number()]),
+  date: z.string(),
+  source: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type EconomicIndicator = z.infer<typeof EconomicIndicatorSchema>;
+
+export const ProductListSchema = z.object({
+  items: z.array(ProductSchema),
+  total: z.number(),
+  skip: z.number(),
+  limit: z.number(),
+  supermarket_counts: z.record(z.string(), z.number()).optional(),
+  variation_counts: z.record(z.string(), z.number()).optional(),
+});
+export type ProductList = z.infer<typeof ProductListSchema>;
+
+export const ProductCountSchema = z.object({
+  count: z.number(),
+});
+export type ProductCount = z.infer<typeof ProductCountSchema>;
+
+export const SupermarketLogosSchema = z.record(SupermarketSchema, z.string());
+export type SupermarketLogos = z.infer<typeof SupermarketLogosSchema>;
+
+export const LocationCoverageSchema = z.record(z.string(), z.unknown());
+export type LocationCoverage = z.infer<typeof LocationCoverageSchema>;

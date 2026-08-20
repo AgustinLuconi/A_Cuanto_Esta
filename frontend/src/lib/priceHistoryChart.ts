@@ -30,7 +30,8 @@ export function buildPriceChartData(records: PriceHistoryRecord[]): {
   const series: Record<string, number[]> = {};
   for (const [supermarket, dayMap] of Array.from(bySuper.entries())) {
     const sortedDays = Array.from(dayMap.keys()).sort();
-    const firstKnownPrice = dayMap.get(sortedDays[0])!.price;
+    const firstDay = sortedDays[0];
+    const firstKnownPrice = firstDay ? (dayMap.get(firstDay)?.price ?? 0) : 0;
     let lastKnown = firstKnownPrice;
     const values: number[] = [];
     for (const day of labels) {
@@ -67,7 +68,8 @@ export function buildInflationFactors(
   }
 
   // Normalizar: el mes del primer label lee como 1.0
-  const baseMonth = labels[0].slice(0, 7);
+  const firstLabel = labels[0];
+  const baseMonth = firstLabel ? firstLabel.slice(0, 7) : "";
   const baseFactor = factorByMonth.get(baseMonth) ?? 1;
 
   // Forward-fill: mantener el último factor conocido si un mes no tiene dato.

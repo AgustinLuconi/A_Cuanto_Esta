@@ -127,7 +127,7 @@ export default function ProductCard({
                   </span>
                   {cheapestEntry && (
                     <span className="text-xs text-neutral">
-                      en {SUPERMARKET_LABELS[cheapestEntry.supermarket]}
+                      en {SUPERMARKET_LABELS[cheapestEntry.supermarket] ?? cheapestEntry.supermarket}
                     </span>
                   )}
                 </>

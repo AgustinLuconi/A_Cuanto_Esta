@@ -405,7 +405,7 @@ export default function ResultadosContent() {
           {/* Product list */}
           {!isLoading && products.length > 0 && (
             <>
-              {sort === "price_asc" ? (
+              {sort === "price_asc" && products[0] ? (
                 <>
                   {/* Ordenado por precio ascendente: el primero es realmente el más barato */}
                   <ProductCardFull product={products[0]} isCheapest smFilter={smFilter} />
