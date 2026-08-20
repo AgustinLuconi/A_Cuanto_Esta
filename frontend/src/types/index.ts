@@ -25,6 +25,11 @@ export const PRODUCT_CATEGORIES = [
   "congelados",
   "snacks",
   "desayuno",
+  "mascotas",
+  "bebes",
+  "hogar_bazar",
+  "farmacia_salud",
+  "electro_tecnologia",
   "otros",
 ] as const;
 

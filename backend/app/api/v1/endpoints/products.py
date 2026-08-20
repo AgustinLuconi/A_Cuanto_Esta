@@ -195,6 +195,10 @@ def search_products(
     q: str = Query(..., min_length=1, description="Texto a buscar en nombre del producto"),
     category: ProductCategory | None = None,
     brand: str | None = None,
+    supermarkets: list[str] | None = Query(None, description="Lista de supermercados a filtrar"),
+    only_on_sale: bool | None = Query(None, description="Solo productos en oferta"),
+    only_in_stock: bool | None = Query(None, description="Solo productos en stock"),
+    min_discount: float | None = Query(None, ge=0, le=100, description="Descuento mínimo %"),
     price_min: float | None = Query(None, ge=0),
     price_max: float | None = Query(None, ge=0),
     variation_filter: Literal["down", "low", "high"] | None = None,
@@ -212,27 +216,53 @@ def search_products(
     if brand:
         query = query.filter(Product.brand.ilike(f"%{brand}%"))
 
-    if price_min is not None or price_max is not None:
+    # Filtros avanzados sobre la tabla de precios más recientes (PriceHistory)
+    if (
+        price_min is not None
+        or price_max is not None
+        or supermarkets
+        or only_on_sale
+        or only_in_stock
+        or min_discount is not None
+    ):
         latest_price_sq = (
             db.query(
                 PriceHistory.product_id,
+                PriceHistory.supermarket,
                 func.max(PriceHistory.scraped_at).label("max_at"),
             )
-            .group_by(PriceHistory.product_id)
+            .group_by(PriceHistory.product_id, PriceHistory.supermarket)
             .subquery()
         )
         latest_ph = (
-            db.query(PriceHistory.product_id, PriceHistory.price)
+            db.query(
+                PriceHistory.product_id,
+                PriceHistory.price,
+                PriceHistory.supermarket,
+                PriceHistory.was_on_sale,
+                PriceHistory.in_stock,
+                PriceHistory.discount_percentage,
+            )
             .join(
                 latest_price_sq,
                 and_(
                     PriceHistory.product_id == latest_price_sq.c.product_id,
+                    PriceHistory.supermarket == latest_price_sq.c.supermarket,
                     PriceHistory.scraped_at == latest_price_sq.c.max_at,
                 ),
             )
             .subquery()
         )
         query = query.join(latest_ph, Product.id == latest_ph.c.product_id)
+
+        if supermarkets:
+            query = query.filter(latest_ph.c.supermarket.in_(supermarkets))
+        if only_on_sale:
+            query = query.filter(latest_ph.c.was_on_sale == True)
+        if only_in_stock:
+            query = query.filter(latest_ph.c.in_stock == True)
+        if min_discount is not None:
+            query = query.filter(latest_ph.c.discount_percentage >= min_discount)
         if price_min is not None:
             query = query.filter(latest_ph.c.price >= price_min)
         if price_max is not None:

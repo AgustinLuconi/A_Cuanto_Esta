@@ -404,7 +404,7 @@ export default function ResultadosContent() {
 
           {/* Product list */}
           {!isLoading && products.length > 0 && (
-            <>
+            <div className="col" style={{ gap: 12 }}>
               {sort === "price_asc" && products[0] ? (
                 <>
                   {/* Ordenado por precio ascendente: el primero es realmente el más barato */}
@@ -421,7 +421,7 @@ export default function ResultadosContent() {
               {totalPages > 1 && (
                 <Pagination current={page} total={totalPages} onPage={goToPage} />
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

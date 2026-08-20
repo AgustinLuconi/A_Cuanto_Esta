@@ -42,14 +42,35 @@ export async function searchProducts(
   sort: SortOrder = "relevance",
   priceMin?: number,
   priceMax?: number,
-  variationFilter?: "down" | "low" | "high"
+  variationFilter?: "down" | "low" | "high",
+  supermarkets?: string[],
+  brand?: string,
+  onlyOnSale?: boolean,
+  onlyInStock?: boolean,
+  minDiscount?: number
 ): Promise<ProductList> {
-  const params: Record<string, string> = { q, limit: String(limit), skip: String(skip), sort };
-  if (category) params.category = category;
-  if (priceMin !== undefined) params.price_min = String(priceMin);
-  if (priceMax !== undefined) params.price_max = String(priceMax);
-  if (variationFilter) params.variation_filter = variationFilter;
-  const { data } = await api.get("/products/search", { params });
+  const searchParams = new URLSearchParams({
+    q,
+    limit: String(limit),
+    skip: String(skip),
+    sort,
+  });
+  if (category) searchParams.append("category", category);
+  if (priceMin !== undefined) searchParams.append("price_min", String(priceMin));
+  if (priceMax !== undefined) searchParams.append("price_max", String(priceMax));
+  if (variationFilter) searchParams.append("variation_filter", variationFilter);
+  if (brand) searchParams.append("brand", brand);
+  if (onlyOnSale) searchParams.append("only_on_sale", "true");
+  if (onlyInStock) searchParams.append("only_in_stock", "true");
+  if (minDiscount !== undefined) searchParams.append("min_discount", String(minDiscount));
+
+  if (supermarkets && supermarkets.length > 0) {
+    for (const sm of supermarkets) {
+      searchParams.append("supermarkets", sm);
+    }
+  }
+
+  const { data } = await api.get(`/products/search?${searchParams.toString()}`);
   return ProductListSchema.parse(data);
 }
 

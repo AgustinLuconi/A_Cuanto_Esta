@@ -24,6 +24,11 @@ class ProductCategory(str, enum.Enum):
     CONGELADOS = "congelados"
     SNACKS = "snacks"
     DESAYUNO = "desayuno"
+    MASCOTAS = "mascotas"
+    BEBES = "bebes"
+    HOGAR_BAZAR = "hogar_bazar"
+    FARMACIA_SALUD = "farmacia_salud"
+    ELECTRO_TECNOLOGIA = "electro_tecnologia"
     OTROS = "otros"
 
 
