@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { getProductCount, getEconomicContext } from "@/lib/api";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 import { CatIcon } from "@/components/design/icons";
@@ -169,18 +170,23 @@ export default function Home() {
           <div className="section-head">
             <h2>Explorar por categoría</h2>
             <span className="subtle">
-              <span className="mono">12</span> categorías
+              <span className="mono">{CATEGORIES_DESIGN.length}</span> categorías
               {totalCount !== null && (
                 <> · <span className="mono">{totalCount.toLocaleString("es-AR")}</span> productos</>
               )}
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
             {CATEGORIES_DESIGN.map((cat, i) => {
               const count = categoryQueries[i]?.data?.count;
               return (
-                <button key={cat.id} className="card"
+                <motion.button
+                  key={cat.id}
+                  className="card"
                   onClick={() => router.push(`/resultados?categoria=${cat.id}`)}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   style={{
                     display: "flex", alignItems: "center", gap: 12,
                     padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)",
@@ -191,7 +197,7 @@ export default function Home() {
                   onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = "var(--border)"; el.style.boxShadow = "var(--shadow-1)"; }}
                 >
                   <div style={{ flexShrink: 0 }}>
-                    <CatIcon id={cat.id} size={64} />
+                    <CatIcon id={cat.id} size={54} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{cat.name}</div>
@@ -199,7 +205,7 @@ export default function Home() {
                       {count != null ? `${count.toLocaleString("es-AR")} productos` : "Cargando…"}
                     </div>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>

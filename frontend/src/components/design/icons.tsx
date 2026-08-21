@@ -33,7 +33,12 @@ const ICON_BG: Record<string, string> = {
   congelados:  "#edf4fb",
   almacen:     "#f8f2e8",
   snacks:      "#fbf3eb",
+  desayuno:    "#fef5e7",
   mascotas:    "#f8f2eb",
+  bebes:       "#fef0f5",
+  hogar_bazar: "#f2f4f8",
+  farmacia_salud: "#eefaf4",
+  electro_tecnologia: "#f0f4ff",
   otros:       "#eef1f7",
 };
 
@@ -180,6 +185,41 @@ export function CatIcon({ id, size = 72 }: { id: string; size?: number }) {
       <ellipse cx="44" cy="26" rx="4.2" ry="5.2" fill="#8a5a3a"/>
       <path d="M18 40 a14 11 0 0 1 28 0 a7 7 0 0 1 -7 7.5 a5.5 4.5 0 0 1 -7 0 a5.5 4.5 0 0 1 -7 0 a7 7 0 0 1 -7 -7.5 z"
         fill="#8a5a3a"/>
+    </>,
+
+    desayuno: <>
+      <ellipse cx="32" cy="53" rx="14" ry="2" fill="#a06020" opacity="0.12"/>
+      <path d="M19 28 L45 28 L43 47 a4 4 0 0 1 -4 4 L25 51 a4 4 0 0 1 -4 -4 Z" fill="#d97706"/>
+      <path d="M43 32 h5 a4 4 0 0 1 4 4 v2 a4 4 0 0 1 -4 4 h-5" fill="none" stroke="#d97706" strokeWidth="2.5"/>
+      <path d="M26 22 q2 -4 0 -7 M32 22 q2 -4 0 -7 M38 22 q2 -4 0 -7" fill="none" stroke="#f59e0b" strokeWidth="1.2" strokeLinecap="round"/>
+    </>,
+
+    bebes: <>
+      <ellipse cx="32" cy="53" rx="12" ry="2" fill="#db2777" opacity="0.10"/>
+      <path d="M26 26 L38 26 L39 48 a3 3 0 0 1 -3 3 L28 51 a3 3 0 0 1 -3 -3 Z" fill="#f472b6"/>
+      <rect x="28" y="20" width="8" height="6" fill="#fb7185" rx="1"/>
+      <path d="M30 15 a2 2 0 0 1 4 0 v5 h-4 Z" fill="#fbcfe8"/>
+      <circle cx="32" cy="38" r="4" fill="white" opacity="0.8"/>
+      <path d="M30 38 h4 M32 36 v4" stroke="#db2777" strokeWidth="1"/>
+    </>,
+
+    hogar_bazar: <>
+      <ellipse cx="32" cy="53" rx="13" ry="2" fill="#475569" opacity="0.12"/>
+      <path d="M18 30 L32 18 L46 30 V49 a2 2 0 0 1 -2 2 H20 a2 2 0 0 1 -2 -2 Z" fill="#64748b"/>
+      <path d="M28 51 V36 h8 v15 Z" fill="#cbd5e1"/>
+      <rect x="37" y="24" width="4" height="6" fill="#94a3b8"/>
+    </>,
+
+    farmacia_salud: <>
+      <ellipse cx="32" cy="53" rx="12" ry="2" fill="#059669" opacity="0.12"/>
+      <rect x="20" y="22" width="24" height="28" rx="4" fill="#10b981"/>
+      <rect x="29.5" y="28" width="5" height="16" fill="white" rx="1"/>
+      <rect x="24" y="33.5" width="16" height="5" fill="white" rx="1"/>
+    </>,
+
+    electro_tecnologia: <>
+      <ellipse cx="32" cy="53" rx="12" ry="2" fill="#4f46e5" opacity="0.12"/>
+      <path d="M34 16 L22 34 h8 L28 50 L42 30 h-8 Z" fill="#6366f1"/>
     </>,
 
     otros: <>
