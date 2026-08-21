@@ -5,13 +5,13 @@ GET /api/v1/products          — Listado con paginación y filtros
 GET /api/v1/products/search   — Búsqueda avanzada con filtros de precio y variación
 GET /api/v1/products/{id}     — Detalle con precios actuales por supermercado
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
@@ -136,8 +136,8 @@ def _variation_subquery(db: Session):
         .subquery()
     )
 
-    cutoff_start = datetime.utcnow() - timedelta(days=35)
-    cutoff_end = datetime.utcnow() - timedelta(days=25)
+    cutoff_start = datetime.now(timezone.utc) - timedelta(days=35)
+    cutoff_end = datetime.now(timezone.utc) - timedelta(days=25)
     old_sq = (
         db.query(
             PriceHistory.product_id,
@@ -278,7 +278,7 @@ def search_products(
             PriceHistory.supermarket,
             func.count(func.distinct(PriceHistory.product_id)).label("cnt"),
         )
-        .filter(PriceHistory.product_id.in_(base_product_ids))
+        .filter(PriceHistory.product_id.in_(select(base_product_ids.c.id)))
         .group_by(PriceHistory.supermarket)
         .all()
     )
@@ -302,7 +302,7 @@ def search_products(
             ).label("low"),
             func.sum(case((variation_sq.c.variation_pct > 10, 1), else_=0)).label("high"),
         )
-        .filter(variation_sq.c.product_id.in_(base_product_ids))
+        .filter(variation_sq.c.product_id.in_(select(base_product_ids.c.id)))
         .one()
     )
     variation_counts = {
