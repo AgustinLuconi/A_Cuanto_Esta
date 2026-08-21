@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Icon, SMSwatch, SM_BY_ID } from "@/components/design/components";
 
 const REGIONS = [
@@ -29,10 +30,11 @@ const REGION_COV: Record<string, number> = {
   noa: 0.66, nea: 0.62, patagonia: 0.71,
 };
 
-const TOTAL_PRODUCTS = 3295;
+const TOTAL_PRODUCTS = 6079;
 
 export default function CoberturaPage() {
   const [active, setActive] = useState("amba");
+  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const router = useRouter();
   const region = REGIONS.find((r) => r.id === active) ?? {
     id: "amba",
@@ -55,7 +57,12 @@ export default function CoberturaPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1.1fr 380px", gap: 24, alignItems: "start" }}>
         {/* MAP */}
         <div className="card" style={{ padding: 28, position: "relative" }}>
-          <ArgMap active={active} setActive={setActive} />
+          <ArgMap
+            active={active}
+            setActive={setActive}
+            hoveredRegion={hoveredRegion}
+            setHoveredRegion={setHoveredRegion}
+          />
 
           {/* Coverage legend */}
           <div style={{
@@ -85,59 +92,80 @@ export default function CoberturaPage() {
         {/* SIDEBAR */}
         <div className="col" style={{ gap: 16 }}>
           {/* Active region detail */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Región seleccionada
-              </div>
-              <span className="badge outlined">{region.provs.length} prov.</span>
-            </div>
-
-            <h2 style={{ fontSize: 24, marginBottom: 4 }}>{region.name}</h2>
-            <div style={{ color: "var(--fg-3)", fontSize: 13, marginBottom: 16 }}>
-              {region.provs.slice(0, 4).join(", ")}
-              {region.provs.length > 4 ? ` +${region.provs.length - 4}` : ""}
-            </div>
-
-            {/* coverage bar */}
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--fg-2)", fontWeight: 600 }}>Productos comparables</span>
-                <span className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--primary)" }}>
-                  {(covVal * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div style={{ height: 8, background: "var(--bg-2)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ width: `${covVal * 100}%`, height: "100%", background: "var(--primary)", borderRadius: 4 }} />
-              </div>
-              <div style={{ fontSize: 11.5, color: "var(--fg-3)", marginTop: 5 }}>
-                <strong className="mono">{Math.floor(TOTAL_PRODUCTS * covVal).toLocaleString("es-AR")}</strong> de {TOTAL_PRODUCTS.toLocaleString("es-AR")} productos relevados acá
-              </div>
-            </div>
-
-            {/* supermarkets in region */}
-            <div>
-              <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-                Supermercados que operan
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-                {smList.map((s) => (
-                  <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--bg-2)", borderRadius: 8 }}>
-                    <SMSwatch sm={s} />
-                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>{SM_BY_ID[s]?.name ?? s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              className="btn"
-              style={{ width: "100%", justifyContent: "center", marginTop: 18 }}
-              onClick={() => router.push(`/resultados?q=leche+entera`)}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={region.id}
+              className="card"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              style={{ padding: 20 }}
             >
-              Buscar en {region.name} <Icon.arrowR />
-            </button>
-          </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Región seleccionada
+                </div>
+                <span className="badge outlined">{region.provs.length} prov.</span>
+              </div>
+
+              <h2 style={{ fontSize: 24, marginBottom: 4 }}>{region.name}</h2>
+              <div style={{ color: "var(--fg-3)", fontSize: 13, marginBottom: 16 }}>
+                {region.provs.slice(0, 4).join(", ")}
+                {region.provs.length > 4 ? ` +${region.provs.length - 4}` : ""}
+              </div>
+
+              {/* coverage bar */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--fg-2)", fontWeight: 600 }}>Productos comparables</span>
+                  <span className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--primary)" }}>
+                    {(covVal * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div style={{ height: 8, background: "var(--bg-2)", borderRadius: 4, overflow: "hidden" }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${covVal * 100}%` }}
+                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                    style={{ height: "100%", background: "var(--primary)", borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--fg-3)", marginTop: 5 }}>
+                  <strong className="mono">{Math.floor(TOTAL_PRODUCTS * covVal).toLocaleString("es-AR")}</strong> de {TOTAL_PRODUCTS.toLocaleString("es-AR")} productos relevados acá
+                </div>
+              </div>
+
+              {/* supermarkets in region */}
+              <div>
+                <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                  Supermercados que operan
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                  {smList.map((s) => (
+                    <motion.div
+                      key={s}
+                      whileHover={{ scale: 1.03 }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--bg-2)", borderRadius: 8 }}
+                    >
+                      <SMSwatch sm={s} />
+                      <span style={{ fontSize: 12.5, fontWeight: 500 }}>{SM_BY_ID[s]?.name ?? s}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              <motion.button
+                className="btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{ width: "100%", justifyContent: "center", marginTop: 18 }}
+                onClick={() => router.push(`/resultados?q=leche+entera`)}
+              >
+                Buscar en {region.name} <Icon.arrowR />
+              </motion.button>
+            </motion.div>
+          </AnimatePresence>
 
           {/* All regions list */}
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -149,9 +177,11 @@ export default function CoberturaPage() {
               const rCov = REGION_COV[r.id] ?? 0.8;
               const rSmList = REGION_SM[r.id] ?? [];
               return (
-                <button
+                <motion.button
                   key={r.id}
                   onClick={() => setActive(r.id)}
+                  whileHover={{ x: 4, backgroundColor: isActive ? "var(--primary-tint)" : "var(--bg-2)" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   style={{
                     display: "flex", alignItems: "center", gap: 12,
                     width: "100%", padding: "12px 18px",
@@ -159,6 +189,7 @@ export default function CoberturaPage() {
                     border: 0, borderBottom: "1px solid var(--border)",
                     textAlign: "left", cursor: "pointer",
                     color: isActive ? "var(--primary)" : "var(--fg)",
+                    transition: "background .15s",
                   }}
                 >
                   <div style={{
@@ -178,7 +209,7 @@ export default function CoberturaPage() {
                     </div>
                   </div>
                   <Icon.arrowR style={{ color: "var(--fg-4)" }} />
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -189,7 +220,7 @@ export default function CoberturaPage() {
 }
 
 // ============================================================================
-// Argentina map — polígonos geométricos sugestivos en SVG 440×680
+// Argentina map — polígonos geométricos sugestivos en SVG 440×680 con Framer Motion
 // ============================================================================
 const SHAPES: Record<string, { label: string; d: string; labelPos: [number, number] }> = {
   noa:       { label: "NOA",       d: "M 150 40 L 245 35 L 260 130 L 175 145 L 155 110 Z",                                                                             labelPos: [200, 90]  },
@@ -201,9 +232,20 @@ const SHAPES: Record<string, { label: string; d: string; labelPos: [number, numb
   patagonia: { label: "Patagonia", d: "M 155 350 L 220 365 L 305 340 L 290 460 L 230 580 L 195 640 L 175 580 L 155 470 L 140 410 Z",                                  labelPos: [220, 495] },
 };
 
-function ArgMap({ active, setActive }: { active: string; setActive: (id: string) => void }) {
+function ArgMap({
+  active,
+  setActive,
+  hoveredRegion,
+  setHoveredRegion,
+}: {
+  active: string;
+  setActive: (id: string) => void;
+  hoveredRegion: string | null;
+  setHoveredRegion: (id: string | null) => void;
+}) {
   const fillFor = (id: string) => {
     if (id === active) return "var(--primary)";
+    if (id === hoveredRegion) return "oklch(0.55 0.18 250)";
     const c = REGION_COV[id] ?? 0.8;
     return `oklch(${0.96 - c * 0.55} 0.06 250)`;
   };
@@ -221,19 +263,32 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
         {REGIONS.map((r) => {
           const s = SHAPES[r.id] ?? { label: r.name, d: "", labelPos: [0, 0] as [number, number] };
           const isActive = active === r.id;
+          const isHovered = hoveredRegion === r.id;
           const rCov = REGION_COV[r.id] ?? 0.8;
           return (
-            <g key={r.id}>
-              <path
+            <motion.g
+              key={r.id}
+              onClick={() => setActive(r.id)}
+              onMouseEnter={() => setHoveredRegion(r.id)}
+              onMouseLeave={() => setHoveredRegion(null)}
+              style={{ cursor: "pointer" }}
+              animate={{
+                scale: isActive ? 1.02 : isHovered ? 1.015 : 1,
+              }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            >
+              <motion.path
                 d={s.d}
                 fill={fillFor(r.id)}
                 stroke="var(--surface)"
-                strokeWidth="2.5"
-                onClick={() => setActive(r.id)}
+                strokeWidth={isActive ? "3.5" : "2"}
                 style={{
-                  cursor: "pointer",
-                  transition: "fill .15s, filter .2s",
-                  filter: isActive ? "drop-shadow(0 6px 14px oklch(0.30 0.08 250 / 0.3))" : "none",
+                  filter: isActive
+                    ? "drop-shadow(0 8px 16px oklch(0.30 0.12 250 / 0.45))"
+                    : isHovered
+                    ? "drop-shadow(0 4px 10px oklch(0.30 0.08 250 / 0.25))"
+                    : "none",
+                  transition: "fill 0.2s ease, stroke 0.2s ease",
                 }}
               />
               <text
@@ -252,7 +307,7 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
               >
                 {(rCov * 100).toFixed(0)}%
               </text>
-            </g>
+            </motion.g>
           );
         })}
 
@@ -273,10 +328,14 @@ function ArgMap({ active, setActive }: { active: string; setActive: (id: string)
 
 function StatPill({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "primary" }) {
   return (
-    <div className="card" style={{ padding: "10px 14px", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-1)" }}>
+    <motion.div
+      className="card"
+      whileHover={{ y: -2 }}
+      style={{ padding: "10px 14px", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-1)" }}
+    >
       <span style={{ fontSize: 10, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
       <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: tone === "primary" ? "var(--primary)" : "var(--fg)" }}>{value}</span>
-    </div>
+    </motion.div>
   );
 }
 

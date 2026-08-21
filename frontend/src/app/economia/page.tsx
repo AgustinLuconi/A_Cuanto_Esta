@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { getEconomicContext, getInflationHistory, getDollarHistory, getRiskCountryHistory } from "@/lib/api";
 import { BarChart, DualLineChart, VarBadge, Sparkline, fmtPrice, fmtPct, Icon } from "@/components/design/components";
 import { ChangeBadge } from "@/components/layout/EconomicSidebar";
@@ -318,7 +319,12 @@ function IndicatorCard({ label, subtitle, value, tone, spark, sparkColor, hideAr
     : "var(--fg)";
 
   return (
-    <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+    <motion.div
+      className="card"
+      whileHover={{ y: -3, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
+    >
       <div>
         <div style={{ fontSize: 11.5, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
         <div style={{ fontSize: 11, color: "var(--fg-4)", marginTop: 2 }}>{subtitle}</div>
@@ -330,7 +336,7 @@ function IndicatorCard({ label, subtitle, value, tone, spark, sparkColor, hideAr
       {spark && spark.length > 1 && (
         <Sparkline data={spark} color={sparkColor} height={36} />
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -340,7 +346,12 @@ function RiskCountryCard({ value, change, spark }: {
   spark: number[];
 }) {
   return (
-    <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+    <motion.div
+      className="card"
+      whileHover={{ y: -3, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
+    >
       <div>
         <div style={{ fontSize: 11.5, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Riesgo país
@@ -354,7 +365,7 @@ function RiskCountryCard({ value, change, spark }: {
         <ChangeBadge value={change} />
       </div>
       {spark.length > 1 && <Sparkline data={spark} color="var(--fg-3)" height={36} />}
-    </div>
+    </motion.div>
   );
 }
 
@@ -364,7 +375,11 @@ function DollarCard({ label, value, change }: {
   change?: number | null;
 }) {
   return (
-    <div style={{ padding: 14, background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--border)" }}>
+    <motion.div
+      whileHover={{ y: -2, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      style={{ padding: 14, background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--border)" }}
+    >
       <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
         {label}
       </div>
@@ -374,7 +389,7 @@ function DollarCard({ label, value, change }: {
         </span>
         <ChangeBadge value={change} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
