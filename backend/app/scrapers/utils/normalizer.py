@@ -49,6 +49,33 @@ _CATEGORY_MAP: dict[str, ProductCategory] = {
     "desayuno y merienda": ProductCategory.DESAYUNO,
     "panificacion": ProductCategory.PANADERIA,
     "panificación": ProductCategory.PANADERIA,
+    # Mascotas
+    "mascotas": ProductCategory.MASCOTAS,
+    "perros": ProductCategory.MASCOTAS,
+    "gatos": ProductCategory.MASCOTAS,
+    "alimento para mascotas": ProductCategory.MASCOTAS,
+    # Bebés
+    "bebes": ProductCategory.BEBES,
+    "bebé": ProductCategory.BEBES,
+    "pañales": ProductCategory.BEBES,
+    "infantil": ProductCategory.BEBES,
+    "bebes y maternidad": ProductCategory.BEBES,
+    # Hogar y Bazar
+    "hogar": ProductCategory.HOGAR_BAZAR,
+    "bazar": ProductCategory.HOGAR_BAZAR,
+    "cocina": ProductCategory.HOGAR_BAZAR,
+    "bazar y hogar": ProductCategory.HOGAR_BAZAR,
+    # Farmacia y Salud
+    "farmacia": ProductCategory.FARMACIA_SALUD,
+    "salud": ProductCategory.FARMACIA_SALUD,
+    "primeros auxilios": ProductCategory.FARMACIA_SALUD,
+    # Electro y Tecnología
+    "electro": ProductCategory.ELECTRO_TECNOLOGIA,
+    "electrodomesticos": ProductCategory.ELECTRO_TECNOLOGIA,
+    "electrodomésticos": ProductCategory.ELECTRO_TECNOLOGIA,
+    "tecnologia": ProductCategory.ELECTRO_TECNOLOGIA,
+    "tecnología": ProductCategory.ELECTRO_TECNOLOGIA,
+    "pequeños electrodomesticos": ProductCategory.ELECTRO_TECNOLOGIA,
 }
 
 # Mapeo de formato de Coto → ProductUnit

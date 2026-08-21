@@ -29,6 +29,11 @@ CATEGORIES = {
     "Higiene":               ["shampoo", "jabon", "pasta dental"],
     "Alimentos básicos":     ["arroz", "fideos", "harina", "azucar"],
     "Snacks":                ["galletitas", "chocolate", "caramelos"],
+    "Mascotas":              ["alimento perro", "alimento gato", "piedras gato"],
+    "Bebés":                 ["pañales", "toallitas humedas"],
+    "Carnes":                ["carne vacuna", "pollo", "milanesas"],
+    "Congelados":            ["hamburguesas", "nuggets", "papas congeladas"],
+    "Electro":               ["pava electrica", "licuadora", "tostadora"],
 }
 
 
