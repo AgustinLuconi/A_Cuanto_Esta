@@ -20,18 +20,20 @@ const TRENDING = [
   { q: "Fideos spaghetti",  change: -0.018, dir: "down" },
 ];
 
+// EconomicContextSchema ya coerciona los campos numéricos (ver src/types/index.ts) —
+// acá solo se normalizan los porcentajes de fracción (0.021 -> 2,1%) para fmtPct().
 function parseEco(eco: EconomicContext) {
   return {
-    inflationMonth:       eco.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly)) / 100  : null,
-    inflationMonthChange: eco.inflation_monthly_change != null ? parseFloat(String(eco.inflation_monthly_change)) / 100 : null,
-    inflationYearly:      eco.inflation_yearly  != null ? parseFloat(String(eco.inflation_yearly)) / 100   : null,
-    inflationYTD:         eco.inflation_ytd     != null ? parseFloat(String(eco.inflation_ytd)) / 100      : null,
-    dollarBlue:           eco.dollar_blue       != null ? parseFloat(String(eco.dollar_blue))        : null,
-    dollarBlueChange:     eco.dollar_blue_change != null ? parseFloat(String(eco.dollar_blue_change)) / 100 : null,
-    dollarOficial:        eco.dollar_oficial    != null ? parseFloat(String(eco.dollar_oficial))     : null,
-    dollarOficialChange:  eco.dollar_oficial_change != null ? parseFloat(String(eco.dollar_oficial_change)) / 100 : null,
-    riskCountry:          eco.risk_country      != null ? parseFloat(String(eco.risk_country))       : null,
-    riskCountryChange:    eco.risk_country_change != null ? parseFloat(String(eco.risk_country_change)) / 100 : null,
+    inflationMonth:       eco.inflation_monthly != null ? eco.inflation_monthly / 100 : null,
+    inflationMonthChange: eco.inflation_monthly_change != null ? eco.inflation_monthly_change / 100 : null,
+    inflationYearly:      eco.inflation_yearly != null ? eco.inflation_yearly / 100 : null,
+    inflationYTD:         eco.inflation_ytd != null ? eco.inflation_ytd / 100 : null,
+    dollarBlue:           eco.dollar_blue,
+    dollarBlueChange:     eco.dollar_blue_change != null ? eco.dollar_blue_change / 100 : null,
+    dollarOficial:        eco.dollar_oficial,
+    dollarOficialChange:  eco.dollar_oficial_change != null ? eco.dollar_oficial_change / 100 : null,
+    riskCountry:          eco.risk_country,
+    riskCountryChange:    eco.risk_country_change != null ? eco.risk_country_change / 100 : null,
     asOfDate:             eco.last_updated
       ? new Date(eco.last_updated).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
       : "–",
@@ -43,7 +45,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
-  const { data: ecoData } = useQuery({
+  const { data: ecoData, isError: ecoIsError } = useQuery({
     queryKey: ["economic"],
     queryFn: getEconomicContext,
     staleTime: 5 * 60 * 1000,
@@ -292,6 +294,10 @@ export default function Home() {
                   </>
                 )}
               </>
+            ) : ecoIsError ? (
+              <div style={{ color: "var(--bad)", fontSize: 13, textAlign: "center", padding: "16px 0" }}>
+                No se pudieron cargar los indicadores económicos.
+              </div>
             ) : (
               <div style={{ color: "var(--fg-4)", fontSize: 13, textAlign: "center", padding: "16px 0" }}>
                 Cargando indicadores…

@@ -22,7 +22,7 @@ const CATEGORIES_VARIATION = [
 ];
 
 export default function EconomiaPage() {
-  const { data: eco } = useQuery({
+  const { data: eco, isError: ecoIsError } = useQuery({
     queryKey: ["economic"],
     queryFn: getEconomicContext,
     staleTime: 5 * 60 * 1000,
@@ -46,31 +46,28 @@ export default function EconomiaPage() {
     staleTime: 30 * 60 * 1000,
   });
 
-  // La API ya devuelve estos valores como porcentaje (ej. 1.9 = 1,9%), no como fracción.
-  // fmtPct() espera una fracción (multiplica x100 internamente) — hay que normalizar acá,
-  // igual que hace parseEco() en app/page.tsx.
-  const inflationMonth = eco?.inflation_monthly != null ? parseFloat(String(eco.inflation_monthly)) / 100 : null;
-  const inflationYearly = eco?.inflation_yearly != null ? parseFloat(String(eco.inflation_yearly)) / 100 : null;
-  const dollarBlue = eco?.dollar_blue != null ? parseFloat(String(eco.dollar_blue)) : null;
-  const dollarOficial = eco?.dollar_oficial != null ? parseFloat(String(eco.dollar_oficial)) : null;
-  const dollarMayorista = eco?.dollar_mayorista != null ? parseFloat(String(eco.dollar_mayorista)) : null;
-  const dollarMep = eco?.dollar_mep != null ? parseFloat(String(eco.dollar_mep)) : null;
-  const dollarCcl = eco?.dollar_ccl != null ? parseFloat(String(eco.dollar_ccl)) : null;
-  const dollarCripto = eco?.dollar_cripto != null ? parseFloat(String(eco.dollar_cripto)) : null;
-  const dollarTarjeta = eco?.dollar_tarjeta != null ? parseFloat(String(eco.dollar_tarjeta)) : null;
-  const riskCountry = eco?.risk_country != null ? parseFloat(String(eco.risk_country)) : null;
+  // EconomicContextSchema ya coerciona estos campos a number (ver src/types/index.ts) —
+  // la API los devuelve como porcentaje (ej. 1.9 = 1,9%), no como fracción, así que solo
+  // hace falta normalizar a fracción para fmtPct(), igual que hace parseEco() en app/page.tsx.
+  const inflationMonth = eco?.inflation_monthly != null ? eco.inflation_monthly / 100 : null;
+  const inflationYearly = eco?.inflation_yearly != null ? eco.inflation_yearly / 100 : null;
+  const dollarBlue = eco?.dollar_blue ?? null;
+  const dollarOficial = eco?.dollar_oficial ?? null;
+  const dollarMayorista = eco?.dollar_mayorista ?? null;
+  const dollarMep = eco?.dollar_mep ?? null;
+  const dollarCcl = eco?.dollar_ccl ?? null;
+  const dollarCripto = eco?.dollar_cripto ?? null;
+  const dollarTarjeta = eco?.dollar_tarjeta ?? null;
+  const riskCountry = eco?.risk_country ?? null;
 
-  // Los campos *_change vienen como string (Decimal serializado) — parsear antes de usarlos
-  const parseChange = (v: number | string | null | undefined) =>
-    v != null ? parseFloat(String(v)) : null;
-  const dollarOficialChange = parseChange(eco?.dollar_oficial_change);
-  const dollarBlueChange = parseChange(eco?.dollar_blue_change);
-  const dollarMayoristaChange = parseChange(eco?.dollar_mayorista_change);
-  const dollarMepChange = parseChange(eco?.dollar_mep_change);
-  const dollarCclChange = parseChange(eco?.dollar_ccl_change);
-  const dollarCriptoChange = parseChange(eco?.dollar_cripto_change);
-  const dollarTarjetaChange = parseChange(eco?.dollar_tarjeta_change);
-  const riskCountryChange = parseChange(eco?.risk_country_change);
+  const dollarOficialChange = eco?.dollar_oficial_change ?? null;
+  const dollarBlueChange = eco?.dollar_blue_change ?? null;
+  const dollarMayoristaChange = eco?.dollar_mayorista_change ?? null;
+  const dollarMepChange = eco?.dollar_mep_change ?? null;
+  const dollarCclChange = eco?.dollar_ccl_change ?? null;
+  const dollarCriptoChange = eco?.dollar_cripto_change ?? null;
+  const dollarTarjetaChange = eco?.dollar_tarjeta_change ?? null;
+  const riskCountryChange = eco?.risk_country_change ?? null;
   const asOfDate = eco?.last_updated
     ? new Date(eco.last_updated).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
     : "–";
@@ -115,6 +112,12 @@ export default function EconomiaPage() {
           </div>
         </div>
       </div>
+
+      {ecoIsError && (
+        <div className="card" style={{ padding: 12, marginBottom: 22, color: "var(--bad)", fontSize: 13.5 }}>
+          No se pudieron cargar los indicadores económicos.
+        </div>
+      )}
 
       {/* TOP CARDS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 22 }}>
