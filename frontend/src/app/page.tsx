@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { getProductCount, getEconomicContext } from "@/lib/api";
+import { getProductCount, getEconomicContext, getProductFacets } from "@/lib/api";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 import { CatIcon } from "@/components/design/icons";
 import { VarBadge, fmtPrice, fmtPct, Icon } from "@/components/design/components";
@@ -57,12 +57,10 @@ export default function Home() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const categoryQueries = useQueries({
-    queries: CATEGORIES_DESIGN.map((cat) => ({
-      queryKey: ["productCount", cat.id],
-      queryFn: () => getProductCount(cat.backendId),
-      staleTime: 10 * 60 * 1000,
-    })),
+  const { data: categoryFacets } = useQuery({
+    queryKey: ["productFacets"],
+    queryFn: () => getProductFacets(),
+    staleTime: 10 * 60 * 1000,
   });
 
   const totalCount = countData?.count ?? null;
@@ -179,8 +177,8 @@ export default function Home() {
             </span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-            {CATEGORIES_DESIGN.map((cat, i) => {
-              const count = categoryQueries[i]?.data?.count;
+            {CATEGORIES_DESIGN.map((cat) => {
+              const count = categoryFacets?.[cat.backendId];
               return (
                 <motion.button
                   key={cat.id}
