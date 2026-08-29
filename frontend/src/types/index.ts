@@ -153,8 +153,5 @@ export const ProductCountSchema = z.object({
 });
 export type ProductCount = z.infer<typeof ProductCountSchema>;
 
-export const SupermarketLogosSchema = z.record(SupermarketSchema, z.string());
-export type SupermarketLogos = z.infer<typeof SupermarketLogosSchema>;
-
 export const LocationCoverageSchema = z.record(z.string(), z.unknown());
 export type LocationCoverage = z.infer<typeof LocationCoverageSchema>;

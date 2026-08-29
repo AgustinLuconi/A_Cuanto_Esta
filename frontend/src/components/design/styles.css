@@ -50,17 +50,6 @@
   --sm-9: oklch(0.60 0.12 100);  /* olive */
 }
 
-[data-theme="forest"] {
-  --primary: oklch(0.32 0.06 160);
-  --primary-hover: oklch(0.28 0.065 160);
-  --primary-tint: oklch(0.95 0.02 160);
-}
-[data-theme="ink"] {
-  --primary: oklch(0.20 0.015 250);
-  --primary-hover: oklch(0.14 0.012 250);
-  --primary-tint: oklch(0.95 0.005 250);
-}
-
 [data-theme="dark"] {
   --bg: oklch(0.16 0.012 250);
   --bg-2: oklch(0.20 0.013 250);

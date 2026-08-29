@@ -9,7 +9,6 @@ import {
   ProductCountSchema,
   ProductListSchema,
   ProductWithPricesSchema,
-  SupermarketLogosSchema,
   type EconomicContext,
   type LocationCoverage,
   type PriceHistoryRecord,
@@ -17,7 +16,6 @@ import {
   type ProductCount,
   type ProductList,
   type ProductWithPrices,
-  type SupermarketLogos,
 } from "@/types";
 
 const api = axios.create({
@@ -156,11 +154,6 @@ export async function getRiskCountryHistory(
 export async function getLocationCoverage(): Promise<LocationCoverage> {
   const { data } = await api.get("/locations/coverage");
   return LocationCoverageSchema.parse(data);
-}
-
-export async function getSupermarketLogos(): Promise<SupermarketLogos> {
-  const { data } = await api.get("/supermarkets/logos");
-  return SupermarketLogosSchema.parse(data);
 }
 
 export async function getProductFacets(q?: string): Promise<Record<string, number>> {
