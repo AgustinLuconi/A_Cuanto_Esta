@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/design/icons";
 import { Icon } from "@/components/design/components";
 import { useRegion } from "@/lib/regionContext";
+import { useTheme } from "@/lib/themeContext";
 
 // Tab icons — SVGs inline desde app.jsx del diseño de referencia
 function IconResults() {
@@ -49,6 +50,7 @@ export default function Header() {
   const pathname = usePathname();
 
   const { region, setRegion }          = useRegion();
+  const { theme, toggleTheme }         = useTheme();
   const [supermarket, setSupermarket]  = useState("Todos");
   const [regionOpen, setRegionOpen]    = useState(false);
   const [smOpen, setSmOpen]            = useState(false);
@@ -96,6 +98,14 @@ export default function Header() {
           selected={supermarket}
           onSelect={setSupermarket}
         />
+        <button
+          className="tb-pill"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          style={{ cursor: "pointer" }}
+        >
+          {theme === "dark" ? <Icon.sun /> : <Icon.moon />}
+        </button>
       </div>
     </header>
   );
