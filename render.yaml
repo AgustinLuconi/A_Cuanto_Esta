@@ -14,6 +14,8 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false # Deberás cargarla manualmente en el dashboard de Render
+      - key: DATABASE_URL_UNPOOLED
+        sync: false # Conexión directa de Neon (sin -pooler), usada por Alembic
       - key: ENVIRONMENT
         value: production
       - key: BACKEND_CORS_ORIGINS

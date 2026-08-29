@@ -2,7 +2,7 @@
 Configuración de la aplicación usando Pydantic Settings.
 Carga variables de entorno desde .env
 """
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import validator
 
@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     
     # Base de datos
     DATABASE_URL: str
+    # Conexión directa (sin pooler), requerida por Alembic para migraciones.
+    # Neon usa PgBouncer en modo transacción en la URL pooled, que no soporta
+    # el estado de sesión que Alembic necesita para DDL.
+    DATABASE_URL_UNPOOLED: Optional[str] = None
     DATABASE_ECHO: bool = False
     
     # CORS

@@ -34,8 +34,10 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-# Sobrescribir URL de base de datos desde settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+# Sobrescribir URL de base de datos desde settings.
+# Usamos la conexión directa (sin pooler) para migraciones cuando está disponible.
+migration_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
+config.set_main_option("sqlalchemy.url", migration_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
