@@ -300,22 +300,22 @@ export default function Home() {
           </div>
 
           {eco?.inflationYTD != null && (
-            <div className="card" style={{ padding: 16, background: "var(--warn-tint)", borderColor: "oklch(0.88 0.05 70)" }}>
+            <div className="card" style={{ padding: 16, background: "var(--warn-tint)", borderColor: "var(--warn)" }}>
               <div style={{ display: "flex", gap: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--warn)", color: "white", display: "grid", placeItems: "center", flexShrink: 0 }}>
                   <Icon.alert width={16} height={16} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13.5, color: "oklch(0.35 0.1 60)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--fg)" }}>
                     Inflación acumulada {new Date().getFullYear()}
                   </div>
                   <div style={{ marginTop: 8, display: "flex", alignItems: "baseline", gap: 10 }}>
-                    <span className="mono" style={{ fontSize: 26, fontWeight: 700, color: "oklch(0.40 0.13 50)" }}>
+                    <span className="mono" style={{ fontSize: 26, fontWeight: 700, color: "var(--fg)" }}>
                       {fmtPct(eco.inflationYTD, { sign: false })}
                     </span>
-                    <span style={{ fontSize: 11, color: "oklch(0.40 0.05 60)" }}>en lo que va del año</span>
+                    <span style={{ fontSize: 11, color: "var(--fg-2)" }}>en lo que va del año</span>
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 11.5, color: "oklch(0.40 0.04 60)", lineHeight: 1.4 }}>
+                  <div style={{ marginTop: 6, fontSize: 11.5, color: "var(--fg-2)", lineHeight: 1.4 }}>
                     Últimos 12 meses: <strong className="mono">{eco.inflationYearly != null ? fmtPct(eco.inflationYearly, { sign: false }) : "– %"}</strong>
                   </div>
                 </div>

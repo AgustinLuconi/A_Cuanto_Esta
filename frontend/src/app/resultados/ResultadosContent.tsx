@@ -465,7 +465,7 @@ function ProductCardFull({ product, isCheapest = false, smFilter }: {
         style={{
           padding: 18,
           background: "linear-gradient(135deg, var(--good-tint) 0%, transparent 65%)",
-          borderColor: "oklch(0.85 0.07 150)",
+          borderColor: "var(--good)",
           cursor: "pointer", position: "relative", overflow: "hidden",
         }}>
         <div style={{ position: "absolute", top: 14, right: 14 }}>

@@ -174,7 +174,7 @@ export default function EconomiaPage() {
               </div>
             )}
           </div>
-          <BarChart data={inflationBarData} color="oklch(0.78 0.10 70)" height={260} />
+          <BarChart data={inflationBarData} color="var(--warn)" height={260} />
         </div>
 
         {/* Dólar */}

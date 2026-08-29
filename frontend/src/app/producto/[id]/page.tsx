@@ -110,7 +110,7 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
               return (
                 <div key={cp.supermarket} className="card" style={{
                   padding: 14, display: "flex", alignItems: "center", gap: 14,
-                  borderColor: i === 0 ? "oklch(0.85 0.07 150)" : undefined,
+                  borderColor: i === 0 ? "var(--good)" : undefined,
                 }}>
                   <SMSwatch sm={cp.supermarket} />
                   <div style={{ flex: 1 }}>

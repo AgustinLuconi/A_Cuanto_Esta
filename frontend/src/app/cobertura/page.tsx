@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon, SMSwatch, SM_BY_ID } from "@/components/design/components";
+import { useTheme } from "@/lib/themeContext";
 
 const REGIONS = [
   { id: "amba",      name: "AMBA",      provs: ["Buenos Aires (GBA)", "Ciudad de Buenos Aires"] },
@@ -243,11 +244,19 @@ function ArgMap({
   hoveredRegion: string | null;
   setHoveredRegion: (id: string | null) => void;
 }) {
+  const { theme } = useTheme();
+
   const fillFor = (id: string) => {
     if (id === active) return "var(--primary)";
-    if (id === hoveredRegion) return "oklch(0.55 0.18 250)";
+    if (id === hoveredRegion) return "var(--primary-hover)";
     const c = REGION_COV[id] ?? 0.8;
-    return `oklch(${0.96 - c * 0.55} 0.06 250)`;
+    // Passive region shading by coverage %. Calibrated separately per theme
+    // instead of just flipping lightness, so low-coverage regions never turn
+    // near-white (light formula) or near-black (dark formula) against their
+    // very different page backgrounds.
+    return theme === "dark"
+      ? `oklch(${0.28 + c * 0.30} 0.05 250)`
+      : `oklch(${0.96 - c * 0.55} 0.06 250)`;
   };
 
   return (
@@ -255,7 +264,7 @@ function ArgMap({
       <svg viewBox="0 0 440 680" width="100%" style={{ maxWidth: 460, height: "auto" }}>
         <defs>
           <pattern id="ocean" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="6" stroke="oklch(0.95 0.01 220)" strokeWidth="1" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--border)" strokeWidth="1" />
           </pattern>
         </defs>
         <rect x="0" y="0" width="440" height="680" fill="url(#ocean)" opacity="0.5" />
@@ -284,9 +293,13 @@ function ArgMap({
                 strokeWidth={isActive ? "3.5" : "2"}
                 style={{
                   filter: isActive
-                    ? "drop-shadow(0 8px 16px oklch(0.30 0.12 250 / 0.45))"
+                    ? theme === "dark"
+                      ? "drop-shadow(0 8px 16px rgba(0, 0, 0, 0.55))"
+                      : "drop-shadow(0 8px 16px oklch(0.30 0.12 250 / 0.45))"
                     : isHovered
-                    ? "drop-shadow(0 4px 10px oklch(0.30 0.08 250 / 0.25))"
+                    ? theme === "dark"
+                      ? "drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4))"
+                      : "drop-shadow(0 4px 10px oklch(0.30 0.08 250 / 0.25))"
                     : "none",
                   transition: "fill 0.2s ease, stroke 0.2s ease",
                 }}
@@ -312,7 +325,7 @@ function ArgMap({
         })}
 
         {/* TDF decorativo */}
-        <circle cx="230" cy="652" r="6" fill="oklch(0.90 0.02 250)" />
+        <circle cx="230" cy="652" r="6" fill="var(--border-strong)" />
         <text x="244" y="655" fontSize="9.5" fill="var(--fg-3)" fontFamily="var(--font-mono)">TDF</text>
 
         {/* Brújula */}
