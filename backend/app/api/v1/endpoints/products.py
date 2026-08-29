@@ -162,32 +162,77 @@ def _variation_subquery(db: Session):
     )
 
 
-def _get_current_prices(db: Session, product_id: UUID) -> list[PriceHistory]:
+def _get_current_prices_bulk(
+    db: Session, product_ids: list[UUID]
+) -> dict[UUID, list[PriceHistory]]:
     """
-    Devuelve el registro de precio más reciente por supermercado para un producto.
-    Usa subquery 'latest row per group' para eficiencia.
+    Trae el precio más reciente por (producto, supermercado) para una página
+    entera de productos en una sola query, en vez de una query por producto
+    (patrón N+1).
     """
+    if not product_ids:
+        return {}
     latest = (
         db.query(
+            PriceHistory.product_id,
             PriceHistory.supermarket,
             func.max(PriceHistory.scraped_at).label("max_at"),
         )
-        .filter(PriceHistory.product_id == product_id)
-        .group_by(PriceHistory.supermarket)
+        .filter(PriceHistory.product_id.in_(product_ids))
+        .group_by(PriceHistory.product_id, PriceHistory.supermarket)
         .subquery()
     )
-    return (
+    rows = (
         db.query(PriceHistory)
         .join(
             latest,
             and_(
+                PriceHistory.product_id == latest.c.product_id,
                 PriceHistory.supermarket == latest.c.supermarket,
                 PriceHistory.scraped_at == latest.c.max_at,
-                PriceHistory.product_id == product_id,
             ),
         )
         .all()
     )
+    result: dict[UUID, list[PriceHistory]] = {pid: [] for pid in product_ids}
+    for ph in rows:
+        result[ph.product_id].append(ph)
+    return result
+
+
+def _build_products_with_prices(
+    db: Session, products: list[Product]
+) -> list[product_schemas.ProductWithPrices]:
+    """Arma ProductWithPrices para una página de productos, trayendo todos los
+    precios actuales en una sola query bulk en vez de una por producto."""
+    prices_by_product = _get_current_prices_bulk(db, [p.id for p in products])
+    result = []
+    for product in products:
+        current_prices = prices_by_product.get(product.id, [])
+        prices_values = [float(ph.price) for ph in current_prices]
+        lowest = min(prices_values) if prices_values else None
+        highest = max(prices_values) if prices_values else None
+        difference = round(highest - lowest, 2) if (highest and lowest) else None
+        result.append(product_schemas.ProductWithPrices(
+            **product_schemas.Product.model_validate(product).model_dump(),
+            current_prices=[
+                price_schemas.CurrentPrice(
+                    supermarket=ph.supermarket,
+                    price=ph.price,
+                    was_on_sale=ph.was_on_sale,
+                    original_price=ph.original_price,
+                    discount_percentage=ph.discount_percentage,
+                    url=ph.url,
+                    last_updated=ph.scraped_at,
+                    in_stock=ph.in_stock,
+                )
+                for ph in current_prices
+            ],
+            lowest_price=lowest,
+            highest_price=highest,
+            price_difference=difference,
+        ))
+    return result
 
 
 @router.get("/search", response_model=product_schemas.ProductList)
@@ -336,9 +381,9 @@ def search_products(
             .order_by(spread_sq.c.spread.desc().nullslast())
         )
 
-    items = query.offset(skip).limit(limit).all()
+    products = query.offset(skip).limit(limit).all()
     return product_schemas.ProductList(
-        items=items,
+        items=_build_products_with_prices(db, products),
         total=total,
         skip=skip,
         limit=limit,
@@ -375,8 +420,10 @@ def list_products(
     else:
         query = query.order_by(Product.name)
 
-    items = query.offset(skip).limit(limit).all()
-    return product_schemas.ProductList(items=items, total=total, skip=skip, limit=limit)
+    products = query.offset(skip).limit(limit).all()
+    return product_schemas.ProductList(
+        items=_build_products_with_prices(db, products), total=total, skip=skip, limit=limit
+    )
 
 
 @router.get("/count")
@@ -418,29 +465,4 @@ def get_product(product_id: UUID, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    current_prices = _get_current_prices(db, product_id)
-    prices_values = [float(ph.price) for ph in current_prices]
-
-    lowest = min(prices_values) if prices_values else None
-    highest = max(prices_values) if prices_values else None
-    difference = round(highest - lowest, 2) if (highest and lowest) else None
-
-    return product_schemas.ProductWithPrices(
-        **product_schemas.Product.model_validate(product).model_dump(),
-        current_prices=[
-            price_schemas.CurrentPrice(
-                supermarket=ph.supermarket,
-                price=ph.price,
-                was_on_sale=ph.was_on_sale,
-                original_price=ph.original_price,
-                discount_percentage=ph.discount_percentage,
-                url=ph.url,
-                last_updated=ph.scraped_at,
-                in_stock=ph.in_stock,
-            )
-            for ph in current_prices
-        ],
-        lowest_price=lowest,
-        highest_price=highest,
-        price_difference=difference,
-    )
+    return _build_products_with_prices(db, [product])[0]

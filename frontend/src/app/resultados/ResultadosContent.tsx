@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { searchProducts, getProductsList, getProduct, getProductFacets } from "@/lib/api";
+import { searchProducts, getProductsList, getProductFacets } from "@/lib/api";
 import type { SortOrder } from "@/lib/api";
 import { useRegion } from "@/lib/regionContext";
-import type { Product, ProductCategory, ProductList, ProductWithPrices } from "@/types";
+import type { ProductCategory, ProductList, ProductWithPrices } from "@/types";
 import { CATEGORIES_DESIGN, DESIGN_TO_BACKEND } from "@/lib/categoryMap";
 import { Price, SMSwatch, ImagePlaceholder, Icon } from "@/components/design/components";
 
@@ -430,27 +430,24 @@ export default function ResultadosContent() {
 }
 
 // ============================================================================
-// Product card — fetches full price data per product
+// Product card — el precio actual ya viene incluido en la respuesta de
+// /products/search y /products (ver ProductWithPrices), así que no hace
+// falta un fetch por card.
 // ============================================================================
 function ProductCardFull({ product, isCheapest = false, smFilter }: {
-  product: Product;
+  product: ProductWithPrices;
   isCheapest?: boolean;
   smFilter: Set<string>;
 }) {
-  const { data: full } = useQuery<ProductWithPrices>({
-    queryKey: ["product", product.id],
-    queryFn: () => getProduct(product.id),
-    staleTime: 5 * 60 * 1000,
-  });
   const router = useRouter();
 
-  const lowestPrice = full?.lowest_price ?? null;
-  const cheapestSm = full?.current_prices?.reduce((best, cp) =>
+  const lowestPrice = product.lowest_price ?? null;
+  const cheapestSm = product.current_prices.reduce((best, cp) =>
     (!best || cp.price < best.price) ? cp : best, null as ProductWithPrices["current_prices"][0] | null);
 
   // Client-side supermarket filter
-  if (smFilter.size > 0 && full) {
-    const hasSm = full.current_prices.some((cp) => smFilter.has(cp.supermarket));
+  if (smFilter.size > 0) {
+    const hasSm = product.current_prices.some((cp) => smFilter.has(cp.supermarket));
     if (!hasSm) return null;
   }
 
@@ -486,7 +483,7 @@ function ProductCardFull({ product, isCheapest = false, smFilter }: {
                 más barato en <SMSwatch sm={cheapestSm.supermarket} />
                 <strong>{cheapestSm.supermarket.replace("_", " ")}</strong>
                 <span style={{ display: "inline-block", width: 4, height: 4, borderRadius: "50%", background: "var(--fg-4)" }} />
-                Disponible en <strong className="mono">{full?.current_prices.length ?? "–"}/9</strong>
+                Disponible en <strong className="mono">{product.current_prices.length}/9</strong>
               </div>
             )}
           </div>
@@ -530,7 +527,7 @@ function ProductCardFull({ product, isCheapest = false, smFilter }: {
               )}
             </>
           ) : (
-            <div style={{ fontSize: 13, color: "var(--fg-4)" }}>Cargando…</div>
+            <div style={{ fontSize: 13, color: "var(--fg-4)" }}>Sin precio disponible</div>
           )}
         </div>
       </div>

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, UUID4
 from datetime import datetime
 from typing import Optional
 from app.models.product import ProductCategory, ProductUnit
+from app.schemas.price import CurrentPrice
 
 
 class ProductBase(BaseModel):
@@ -56,22 +57,26 @@ class Product(ProductInDB):
         from_attributes = True
 
 
+class ProductWithPrices(Product):
+    """Schema de Producto con precios actuales"""
+    current_prices: list[CurrentPrice] = Field(default_factory=list)
+    lowest_price: Optional[float] = None
+    highest_price: Optional[float] = None
+    price_difference: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
 class ProductList(BaseModel):
-    """Respuesta paginada de productos"""
-    items: list["Product"]
+    """
+    Respuesta paginada de productos, con precios actuales ya incluidos por
+    producto — evita que el cliente tenga que pedir cada precio por separado
+    (patrón N+1).
+    """
+    items: list[ProductWithPrices]
     total: int
     skip: int
     limit: int
     supermarket_counts: dict[str, int] = Field(default_factory=dict)
     variation_counts: dict[str, int] = Field(default_factory=dict)
-
-
-class ProductWithPrices(Product):
-    """Schema de Producto con precios actuales"""
-    current_prices: list = Field(default_factory=list)
-    lowest_price: Optional[float] = None
-    highest_price: Optional[float] = None
-    price_difference: Optional[float] = None
-    
-    class Config:
-        from_attributes = True

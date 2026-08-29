@@ -139,7 +139,7 @@ export const EconomicIndicatorSchema = z.object({
 export type EconomicIndicator = z.infer<typeof EconomicIndicatorSchema>;
 
 export const ProductListSchema = z.object({
-  items: z.array(ProductSchema),
+  items: z.array(ProductWithPricesSchema),
   total: z.number(),
   skip: z.number(),
   limit: z.number(),
