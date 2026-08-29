@@ -7,7 +7,7 @@ precios numéricos, descuentos e imágenes. No requiere headless browser.
 """
 import re
 
-from app.models.product import Product, ProductCategory, ProductUnit
+from app.models.product import ProductCategory
 from app.models.price_history import PriceHistory, Supermarket
 from app.scrapers.base import BaseScraper
 from app.scrapers.utils.normalizer import (
@@ -96,28 +96,12 @@ class AtomoScraper(BaseScraper):
 
     def _save_product(self, db_session, product_data: dict) -> bool:
         """
-        Busca Product por barcode (crea si no existe) y registra PriceHistory.
+        Obtiene o crea el Product (deduplicado por barcode/alias/fuzzy matching
+        vía BaseScraper._get_or_create_product) y registra PriceHistory.
         Retorna True si el producto es nuevo.
         """
         barcode = product_data.get("barcode")
-        product = None
-        if barcode:
-            product = db_session.query(Product).filter(Product.barcode == barcode).first()
-
-        is_new = product is None
-        if is_new:
-            product = Product(
-                name=product_data["name"],
-                normalized_name=product_data["normalized_name"],
-                brand=product_data.get("brand"),
-                category=product_data["category"],
-                unit=product_data["unit"],
-                quantity=product_data.get("quantity"),
-                image_url=product_data.get("image_url"),
-                barcode=barcode,
-            )
-            db_session.add(product)
-            db_session.flush()  # Genera UUID antes de crear PriceHistory
+        product, is_new = self._get_or_create_product(db_session, barcode, "atomo", product_data)
 
         db_session.add(PriceHistory(
             product_id=product.id,
