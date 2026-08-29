@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "A Cuanto Está"
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
-    DEBUG: bool = True
     ENVIRONMENT: str = "development"
+    # None = sin configurar explícitamente: se deriva de ENVIRONMENT (ver validator abajo)
+    # para que producción nunca herede DEBUG=True en silencio.
+    DEBUG: Optional[bool] = None
     
     # Base de datos
     DATABASE_URL: str
@@ -27,6 +29,12 @@ class Settings(BaseSettings):
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = []
+
+    @validator("DEBUG", pre=True, always=True)
+    def default_debug_from_environment(cls, v, values):
+        if v is None:
+            return values.get("ENVIRONMENT", "development") != "production"
+        return v
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:

@@ -6,13 +6,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 
+# En producción se ocultan /docs, /redoc y el schema OpenAPI para no exponer
+# la superficie completa de la API sin necesidad.
+_is_production = settings.ENVIRONMENT == "production"
+
 # Crear instancia de FastAPI
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="API para comparación de precios de supermercados argentinos con contexto económico",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    debug=settings.DEBUG,
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 # Configurar CORS
@@ -35,7 +41,7 @@ def root():
         "message": "A Cuanto Está API",
         "version": settings.VERSION,
         "status": "running",
-        "docs": "/docs",
+        "docs": None if _is_production else "/docs",
     }
 
 
