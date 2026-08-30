@@ -75,9 +75,14 @@ class CotoScraper(BaseScraper):
         qty_num = data.get("product_format_quantity") or 0
         quantity = build_quantity_str(qty_num, data.get("product_format", "")) if qty_num else None
 
-        # Barcode: "prod00251876" → "00251876"
+        # El "id" de Constructor.io (ej. "prod00251876") es el SKU interno de
+        # Coto, no un EAN/UPC real — Coto no expone código de barras real en
+        # este endpoint. Se prefija para que is_real_barcode() nunca lo trate
+        # como un barcode genuino (mismo criterio que la_anonima.py), así
+        # entra siempre por el camino de alias/fuzzy matching en vez de crear
+        # un producto aislado por cada SKU de 8 dígitos.
         raw_id = data.get("id", "")
-        barcode = raw_id.removeprefix("prod") if raw_id else None
+        barcode = f"coto_{raw_id.removeprefix('prod')}" if raw_id else None
 
         # URL del producto en el sitio
         relative_url = data.get("url", "")
