@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, price_index, price_vs_inflation
+from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, price_index, price_vs_inflation, category_variation
 from app.models.economic_indicator import EconomicIndicator
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
@@ -270,3 +270,28 @@ def test_price_index_averages_changes_unweighted():
     assert result.avg_change_pct == pytest.approx(0.15)
     assert result.basket_size == 2
     assert result.period_days == 7
+
+
+# --- category_variation: endpoint -----------------------------------------
+
+
+def test_category_variation_returns_empty_dict_when_no_products_qualify():
+    db = MagicMock()
+    with patch("app.api.v1.endpoints.analysis._compute_price_changes", return_value=[]):
+        result = category_variation(days=30, db=db)
+
+    assert result == {}
+
+
+def test_category_variation_groups_and_averages_by_category():
+    # lacteos: +10%, +20% -> promedio 15%. limpieza: +4% -> promedio 4%.
+    changes = [
+        (0.10, "lacteos"),
+        (0.20, "lacteos"),
+        (0.04, "limpieza"),
+    ]
+    db = MagicMock()
+    with patch("app.api.v1.endpoints.analysis._compute_price_changes", return_value=changes):
+        result = category_variation(days=30, db=db)
+
+    assert result == {"lacteos": pytest.approx(0.15), "limpieza": pytest.approx(0.04)}

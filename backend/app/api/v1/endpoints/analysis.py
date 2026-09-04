@@ -131,6 +131,28 @@ def price_index(
     )
 
 
+@router.get("/category-variation")
+def category_variation(
+    days: int = Query(30, ge=1, le=365, description="Ventana en días"),
+    db: Session = Depends(get_db),
+) -> dict[str, float]:
+    """
+    Variación de precio promedio por categoría, para productos con
+    historial continuo suficiente en la ventana. Categorías sin canasta
+    suficiente quedan ausentes del diccionario en vez de aparecer en 0%
+    (que implicaría "no varió" en vez de "sin datos suficientes").
+    Reemplaza CATEGORIES_VARIATION hardcodeado del dashboard de economía.
+    """
+    changes = _compute_price_changes(db, days)
+    by_category: dict[str, list[float]] = defaultdict(list)
+    for change, category_value in changes:
+        by_category[category_value].append(change)
+    return {
+        category: round(sum(vals) / len(vals), 4)
+        for category, vals in by_category.items()
+    }
+
+
 @router.get("/price-vs-inflation", response_model=PriceInflationAnalysis)
 def price_vs_inflation(
     product_id: UUID = Query(..., description="ID del producto"),
