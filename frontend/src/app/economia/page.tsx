@@ -2,24 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { getEconomicContext, getInflationHistory, getDollarHistory, getRiskCountryHistory } from "@/lib/api";
+import { getEconomicContext, getInflationHistory, getDollarHistory, getRiskCountryHistory, getCategoryVariation } from "@/lib/api";
 import { BarChart, DualLineChart, VarBadge, Sparkline, fmtPrice, fmtPct, Icon } from "@/components/design/components";
 import { ChangeBadge } from "@/components/layout/EconomicSidebar";
-
-const CATEGORIES_VARIATION = [
-  { cat: "Aceites y grasas",  pct: 0.612 },
-  { cat: "Panificados",       pct: 0.488 },
-  { cat: "Lácteos",           pct: 0.401 },
-  { cat: "Almacén",           pct: 0.385 },
-  { cat: "Higiene personal",  pct: 0.358 },
-  { cat: "Limpieza",          pct: 0.341 },
-  { cat: "Bebidas",           pct: 0.297 },
-  { cat: "Snacks",            pct: 0.281 },
-  { cat: "Carnes",            pct: 0.267 },
-  { cat: "Frutas y verduras", pct: 0.244 },
-  { cat: "Congelados",        pct: 0.223 },
-  { cat: "Mascotas",          pct: 0.198 },
-];
+import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 
 export default function EconomiaPage() {
   const { data: eco, isError: ecoIsError } = useQuery({
@@ -43,6 +29,12 @@ export default function EconomiaPage() {
   const { data: riskCountryRaw = [] } = useQuery({
     queryKey: ["riskCountryHistory"],
     queryFn: () => getRiskCountryHistory(12),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: categoryVariation } = useQuery({
+    queryKey: ["categoryVariation"],
+    queryFn: () => getCategoryVariation(30),
     staleTime: 30 * 60 * 1000,
   });
 
@@ -251,9 +243,9 @@ export default function EconomiaPage() {
       <div className="card" style={{ padding: 22 }}>
         <div className="section-head">
           <div>
-            <h2>Variación por categoría (12 meses)</h2>
+            <h2>Variación por categoría (30 días)</h2>
             <div className="subtle" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
-              Estimación basada en productos monitoreados
+              Promedio de variación de precio en los productos monitoreados de cada categoría
             </div>
           </div>
           <button className="btn ghost">
@@ -262,28 +254,31 @@ export default function EconomiaPage() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px 32px" }}>
-          {CATEGORIES_VARIATION.map(({ cat, pct }) => {
-            const aboveIPC = inflationYearly != null ? pct > inflationYearly : true;
-            const max = 0.65;
-            const ipcPct = inflationYearly ?? 0.60;
-            return (
-              <div key={cat} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{cat}</span>
-                  <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: aboveIPC ? "var(--bad)" : "var(--good)" }}>
-                    +{(pct * 100).toFixed(1).replace(".", ",")}%
-                  </span>
+          {CATEGORIES_DESIGN
+            .filter((cat) => categoryVariation?.[cat.backendId] != null)
+            .map((cat) => {
+              const pct = categoryVariation![cat.backendId] as number;
+              const aboveIPC = inflationMonth != null ? pct > inflationMonth : true;
+              const max = 0.15;
+              const ipcPct = inflationMonth ?? 0.03;
+              return (
+                <div key={cat.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{cat.name}</span>
+                    <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: aboveIPC ? "var(--bad)" : "var(--good)" }}>
+                      {fmtPct(pct)}
+                    </span>
+                  </div>
+                  <div style={{ position: "relative", height: 6, background: "var(--bg-2)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${Math.min(Math.abs(pct) / max, 1) * 100}%`, background: aboveIPC ? "var(--bad)" : "var(--good)" }} />
+                    {inflationMonth != null && (
+                      <div title={`IPC mensual: ${fmtPct(inflationMonth, { sign: false })}`}
+                        style={{ position: "absolute", left: `${Math.min(ipcPct / max, 1) * 100}%`, top: -3, bottom: -3, width: 2, background: "var(--warn)" }} />
+                    )}
+                  </div>
                 </div>
-                <div style={{ position: "relative", height: 6, background: "var(--bg-2)", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(pct / max) * 100}%`, background: aboveIPC ? "var(--bad)" : "var(--good)" }} />
-                  {inflationYearly != null && (
-                    <div title={`IPC 12m: ${fmtPct(inflationYearly, { sign: false })}`}
-                      style={{ position: "absolute", left: `${(ipcPct / max) * 100}%`, top: -3, bottom: -3, width: 2, background: "var(--warn)" }} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
 
         <div style={{ marginTop: 18, padding: 12, background: "var(--bg-2)", borderRadius: 8, display: "flex", gap: 18, fontSize: 12, color: "var(--fg-2)", flexWrap: "wrap" }}>
@@ -295,10 +290,10 @@ export default function EconomiaPage() {
             <span style={{ width: 12, height: 6, background: "var(--good)", borderRadius: 2 }} />
             Por debajo del IPC
           </span>
-          {inflationYearly != null && (
+          {inflationMonth != null && (
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 2, height: 12, background: "var(--warn)" }} />
-              IPC 12 meses: {fmtPct(inflationYearly, { sign: false })}
+              IPC mensual: {fmtPct(inflationMonth, { sign: false })}
             </span>
           )}
         </div>
