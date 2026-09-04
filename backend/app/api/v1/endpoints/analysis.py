@@ -106,6 +106,31 @@ def _compute_price_changes(db: Session, days: int) -> list[tuple[float, str]]:
     return changes
 
 
+class PriceIndexResponse(BaseModel):
+    avg_change_pct: float | None
+    basket_size: int
+    period_days: int
+
+
+@router.get("/price-index", response_model=PriceIndexResponse)
+def price_index(
+    days: int = Query(7, ge=1, le=365, description="Ventana en días"),
+    db: Session = Depends(get_db),
+):
+    """
+    Variación de precio promedio (no ponderada) de la canasta de productos
+    con historial continuo suficiente en la ventana. Reemplaza el "Índice A
+    Cuanto Está" hardcodeado del home.
+    """
+    changes = _compute_price_changes(db, days)
+    if not changes:
+        return PriceIndexResponse(avg_change_pct=None, basket_size=0, period_days=days)
+    avg = sum(change for change, _ in changes) / len(changes)
+    return PriceIndexResponse(
+        avg_change_pct=round(avg, 4), basket_size=len(changes), period_days=days
+    )
+
+
 @router.get("/price-vs-inflation", response_model=PriceInflationAnalysis)
 def price_vs_inflation(
     product_id: UUID = Query(..., description="ID del producto"),

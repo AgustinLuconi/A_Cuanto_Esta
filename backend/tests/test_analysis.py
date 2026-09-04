@@ -7,7 +7,7 @@ import os
 import sys
 from types import SimpleNamespace
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, price_vs_inflation
+from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, price_index, price_vs_inflation
 from app.models.economic_indicator import EconomicIndicator
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
@@ -245,3 +245,28 @@ def test_compute_price_changes_treats_different_supermarkets_as_independent_seri
     assert len(result) == 1
     change_pct, category_value = result[0]
     assert change_pct == pytest.approx(0.10)  # el 9999 de Carrefour nunca entra al cálculo
+
+
+# --- price_index: endpoint ------------------------------------------------
+
+
+def test_price_index_returns_none_and_zero_basket_when_no_products_qualify():
+    db = MagicMock()
+    with patch("app.api.v1.endpoints.analysis._compute_price_changes", return_value=[]):
+        result = price_index(days=7, db=db)
+
+    assert result.avg_change_pct is None
+    assert result.basket_size == 0
+    assert result.period_days == 7
+
+
+def test_price_index_averages_changes_unweighted():
+    # Arrange: dos pares (producto, super), +10% y +20% -> promedio simple = 15%.
+    changes = [(0.10, "lacteos"), (0.20, "limpieza")]
+    db = MagicMock()
+    with patch("app.api.v1.endpoints.analysis._compute_price_changes", return_value=changes):
+        result = price_index(days=7, db=db)
+
+    assert result.avg_change_pct == pytest.approx(0.15)
+    assert result.basket_size == 2
+    assert result.period_days == 7
