@@ -271,7 +271,7 @@ export default function Home() {
                       delta={eco.dollarOficialChange}
                       deltaLabel="últimas 24 hs"
                     />
-                    <Divider />
+                    {priceIndex?.avg_change_pct != null && <Divider />}
                     {priceIndex?.avg_change_pct != null && (
                       <EcoMiniCard
                         label="Variación semanal"
