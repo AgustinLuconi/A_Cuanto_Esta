@@ -6,12 +6,14 @@ import {
   EconomicIndicatorSchema,
   LocationCoverageSchema,
   PriceHistoryRecordSchema,
+  PriceIndexSchema,
   ProductCountSchema,
   ProductListSchema,
   ProductWithPricesSchema,
   type EconomicContext,
   type LocationCoverage,
   type PriceHistoryRecord,
+  type PriceIndex,
   type ProductCategory,
   type ProductCount,
   type ProductList,
@@ -160,5 +162,15 @@ export async function getProductFacets(q?: string): Promise<Record<string, numbe
   const params: Record<string, string> = {};
   if (q) params.q = q;
   const { data } = await api.get("/products/facets", { params });
+  return z.record(z.string(), z.number()).parse(data);
+}
+
+export async function getPriceIndex(days = 7): Promise<PriceIndex> {
+  const { data } = await api.get("/analysis/price-index", { params: { days } });
+  return PriceIndexSchema.parse(data);
+}
+
+export async function getCategoryVariation(days = 30): Promise<Record<string, number>> {
+  const { data } = await api.get("/analysis/category-variation", { params: { days } });
   return z.record(z.string(), z.number()).parse(data);
 }

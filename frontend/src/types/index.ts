@@ -148,6 +148,13 @@ export const ProductListSchema = z.object({
 });
 export type ProductList = z.infer<typeof ProductListSchema>;
 
+export const PriceIndexSchema = z.object({
+  avg_change_pct: z.number().nullable(),
+  basket_size: z.number(),
+  period_days: z.number(),
+});
+export type PriceIndex = z.infer<typeof PriceIndexSchema>;
+
 export const ProductCountSchema = z.object({
   count: z.number(),
 });
