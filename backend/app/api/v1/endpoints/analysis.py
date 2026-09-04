@@ -53,17 +53,22 @@ def _build_analysis_text(
 _MIN_COVERAGE_RATIO = 0.7
 
 
-def _compute_price_changes(db: Session, days: int) -> dict[UUID, tuple[float, str]]:
+def _compute_price_changes(db: Session, days: int) -> list[tuple[float, str]]:
     """
-    Para cada producto con precio registrado en al menos el 70% de los días
-    de la ventana de `days` días, calcula su variación de precio (primer
-    precio vs. último precio dentro de la ventana). Productos con menos
+    Para cada (producto, supermercado) con precio registrado en al menos el
+    70% de los días de la ventana de `days` días, calcula su variación de
+    precio (primer precio vs. último precio dentro de la ventana). Se
+    agrupa por (producto, supermercado) y no solo por producto: un mismo
+    producto vendido en dos supermercados tiene dos series de precio
+    independientes, y mezclarlas mediría la diferencia de precio ENTRE
+    negocios en vez de el cambio de precio EN EL TIEMPO. Pares con poca
     continuidad (recién agregados, scrapeados de forma intermitente) quedan
     afuera para no meter ruido en el promedio.
 
     Returns:
-        {product_id: (change_pct, category_value)} — change_pct es una
-        fracción (0.02 = 2%), no un porcentaje ya multiplicado por 100.
+        Lista de (change_pct, category_value) — change_pct es una fracción
+        (0.02 = 2%), no un porcentaje ya multiplicado por 100. Sin orden
+        garantizado; los llamadores solo necesitan iterar los valores.
     """
     cutoff = datetime.utcnow() - timedelta(days=days)
     min_days = math.ceil(days * _MIN_COVERAGE_RATIO)
@@ -71,22 +76,23 @@ def _compute_price_changes(db: Session, days: int) -> dict[UUID, tuple[float, st
     rows = (
         db.query(
             PriceHistory.product_id,
+            PriceHistory.supermarket,
             PriceHistory.price,
             PriceHistory.scraped_at,
             Product.category,
         )
         .join(Product, Product.id == PriceHistory.product_id)
         .filter(PriceHistory.scraped_at >= cutoff)
-        .order_by(PriceHistory.product_id, PriceHistory.scraped_at.asc())
+        .order_by(PriceHistory.product_id, PriceHistory.supermarket, PriceHistory.scraped_at.asc())
         .all()
     )
 
-    by_product: dict[UUID, list[tuple[datetime, float, str]]] = defaultdict(list)
-    for product_id, price, scraped_at, category in rows:
-        by_product[product_id].append((scraped_at, float(price), category.value))
+    by_pair: dict[tuple[UUID, str], list[tuple[datetime, float, str]]] = defaultdict(list)
+    for product_id, supermarket, price, scraped_at, category in rows:
+        by_pair[(product_id, supermarket)].append((scraped_at, float(price), category.value))
 
-    changes: dict[UUID, tuple[float, str]] = {}
-    for product_id, points in by_product.items():
+    changes: list[tuple[float, str]] = []
+    for points in by_pair.values():
         distinct_days = {ts.date() for ts, _, _ in points}
         if len(distinct_days) < min_days:
             continue
@@ -95,7 +101,7 @@ def _compute_price_changes(db: Session, days: int) -> dict[UUID, tuple[float, st
         if first_price == 0:
             continue
         category_value = points[0][2]
-        changes[product_id] = ((last_price - first_price) / first_price, category_value)
+        changes.append(((last_price - first_price) / first_price, category_value))
 
     return changes
 

@@ -162,61 +162,86 @@ def test_price_vs_inflation_raises_404_when_no_price_records_in_period():
 # --- _compute_price_changes: canasta y cálculo de variación -------------
 
 
-def _row(product_id, price, days_ago, category):
-    return (product_id, price, datetime.utcnow() - timedelta(days=days_ago), category)
+def _row(product_id, supermarket, price, days_ago, category):
+    return (product_id, supermarket, price, datetime.utcnow() - timedelta(days=days_ago), category)
 
 
-def test_compute_price_changes_excludes_product_below_coverage_threshold():
+def test_compute_price_changes_excludes_pair_below_coverage_threshold():
     # Arrange: ventana de 10 días, umbral de continuidad = ceil(10*0.7) = 7 días.
-    # Este producto solo tiene 2 días distintos de precio -> por debajo del umbral.
+    # Este (producto, super) solo tiene 2 días distintos de precio -> por debajo del umbral.
     pid = uuid4()
     rows = [
-        _row(pid, 100, days_ago=9, category=ProductCategory.LACTEOS),
-        _row(pid, 110, days_ago=1, category=ProductCategory.LACTEOS),
+        _row(pid, Supermarket.COTO, 100, days_ago=9, category=ProductCategory.LACTEOS),
+        _row(pid, Supermarket.COTO, 110, days_ago=1, category=ProductCategory.LACTEOS),
     ]
     db = MagicMock()
     db.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = rows
 
     result = _compute_price_changes(db, days=10)
 
-    assert result == {}
+    assert result == []
 
 
-def test_compute_price_changes_includes_product_meeting_threshold():
+def test_compute_price_changes_includes_pair_meeting_threshold():
     # Arrange: 7 días distintos de precio en una ventana de 10 días (umbral: 7) -> entra.
     # Precio sube de 100 a 110 -> +10%.
     pid = uuid4()
-    rows = [_row(pid, 100, days_ago=9, category=ProductCategory.LACTEOS)]
+    rows = [_row(pid, Supermarket.COTO, 100, days_ago=9, category=ProductCategory.LACTEOS)]
     for d in range(6, 0, -1):
-        rows.append(_row(pid, 100 + (9 - d), days_ago=d, category=ProductCategory.LACTEOS))
-    rows.append(_row(pid, 110, days_ago=1, category=ProductCategory.LACTEOS))
+        rows.append(_row(pid, Supermarket.COTO, 100 + (9 - d), days_ago=d, category=ProductCategory.LACTEOS))
+    rows.append(_row(pid, Supermarket.COTO, 110, days_ago=1, category=ProductCategory.LACTEOS))
     db = MagicMock()
     db.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = rows
 
     result = _compute_price_changes(db, days=10)
 
-    assert pid in result
-    change_pct, category_value = result[pid]
+    assert len(result) == 1
+    change_pct, category_value = result[0]
     assert change_pct == pytest.approx(0.10)
     assert category_value == "lacteos"
 
 
-def test_compute_price_changes_returns_empty_dict_when_no_rows():
+def test_compute_price_changes_returns_empty_list_when_no_rows():
     db = MagicMock()
     db.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = []
 
     result = _compute_price_changes(db, days=7)
 
-    assert result == {}
+    assert result == []
 
 
-def test_compute_price_changes_skips_product_with_zero_first_price():
-    # Producto con suficiente continuidad pero precio inicial 0 -> evita división por cero.
+def test_compute_price_changes_skips_pair_with_zero_first_price():
+    # (producto, super) con suficiente continuidad pero precio inicial 0 -> evita división por cero.
     pid = uuid4()
-    rows = [_row(pid, 0, days_ago=d, category=ProductCategory.LACTEOS) for d in range(6, -1, -1)]
+    rows = [
+        _row(pid, Supermarket.COTO, 0, days_ago=d, category=ProductCategory.LACTEOS)
+        for d in range(6, -1, -1)
+    ]
     db = MagicMock()
     db.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = rows
 
     result = _compute_price_changes(db, days=7)
 
-    assert result == {}
+    assert result == []
+
+
+def test_compute_price_changes_treats_different_supermarkets_as_independent_series():
+    # Mismo producto en 2 supermercados: Coto sube 100->110 (+10%, 7 días
+    # continuos, entra), Carrefour tiene solo 1 día de datos (no entra). Si
+    # el agrupamiento fuera por product_id solo (sin supermarket), esto se
+    # mezclaría en una sola serie con el orden equivocado — cada
+    # (producto, super) debe evaluarse de forma completamente independiente.
+    pid = uuid4()
+    rows = [_row(pid, Supermarket.COTO, 100, days_ago=9, category=ProductCategory.LACTEOS)]
+    for d in range(6, 0, -1):
+        rows.append(_row(pid, Supermarket.COTO, 100 + (9 - d), days_ago=d, category=ProductCategory.LACTEOS))
+    rows.append(_row(pid, Supermarket.COTO, 110, days_ago=1, category=ProductCategory.LACTEOS))
+    rows.append(_row(pid, Supermarket.CARREFOUR, 9999, days_ago=5, category=ProductCategory.LACTEOS))
+    db = MagicMock()
+    db.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = rows
+
+    result = _compute_price_changes(db, days=10)
+
+    assert len(result) == 1
+    change_pct, category_value = result[0]
+    assert change_pct == pytest.approx(0.10)  # el 9999 de Carrefour nunca entra al cálculo
