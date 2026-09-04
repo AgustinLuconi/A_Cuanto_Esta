@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { getProductCount, getEconomicContext, getProductFacets } from "@/lib/api";
+import { getProductCount, getEconomicContext, getProductFacets, getPriceIndex } from "@/lib/api";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 import { CatIcon } from "@/components/design/icons";
 import { VarBadge, fmtPrice, fmtPct, Icon } from "@/components/design/components";
@@ -60,6 +60,12 @@ export default function Home() {
   const { data: categoryFacets } = useQuery({
     queryKey: ["productFacets"],
     queryFn: () => getProductFacets(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: priceIndex } = useQuery({
+    queryKey: ["priceIndex"],
+    queryFn: () => getPriceIndex(7),
     staleTime: 10 * 60 * 1000,
   });
 
@@ -266,14 +272,20 @@ export default function Home() {
                       deltaLabel="últimas 24 hs"
                     />
                     <Divider />
-                    <EcoMiniCard
-                      label="Variación semanal"
-                      source="Índice A Cuanto Está"
-                      value={<span className="mono" style={{ color: "var(--bad)" }}>+0,8%</span>}
-                      delta={0.008}
-                      deltaLabel={`canasta de ${totalCount !== null ? totalCount.toLocaleString("es-AR") : "3.295"} productos`}
-                      hideArrow
-                    />
+                    {priceIndex?.avg_change_pct != null && (
+                      <EcoMiniCard
+                        label="Variación semanal"
+                        source="Índice A Cuanto Está"
+                        value={
+                          <span className="mono" style={{ color: priceIndex.avg_change_pct > 0 ? "var(--bad)" : "var(--good)" }}>
+                            {fmtPct(priceIndex.avg_change_pct)}
+                          </span>
+                        }
+                        delta={priceIndex.avg_change_pct}
+                        deltaLabel={`canasta de ${priceIndex.basket_size.toLocaleString("es-AR")} productos`}
+                        hideArrow
+                      />
+                    )}
                   </>
                 )}
                 {eco.riskCountry != null && (
