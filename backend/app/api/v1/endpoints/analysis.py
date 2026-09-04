@@ -4,6 +4,7 @@ Endpoints de Análisis.
 GET /api/v1/analysis/price-vs-inflation — Comparar evolución de precio contra inflación
 """
 import math
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -47,6 +48,56 @@ def _build_analysis_text(
             return f"El producto subió {ratio:.1f}x más que la inflación del período."
         return f"El producto subió {price_change:.1f}% mientras la inflación fue 0%."
     return f"El producto subió menos que la inflación ({abs(difference):.1f} p.p. por debajo)."
+
+
+_MIN_COVERAGE_RATIO = 0.7
+
+
+def _compute_price_changes(db: Session, days: int) -> dict[UUID, tuple[float, str]]:
+    """
+    Para cada producto con precio registrado en al menos el 70% de los días
+    de la ventana de `days` días, calcula su variación de precio (primer
+    precio vs. último precio dentro de la ventana). Productos con menos
+    continuidad (recién agregados, scrapeados de forma intermitente) quedan
+    afuera para no meter ruido en el promedio.
+
+    Returns:
+        {product_id: (change_pct, category_value)} — change_pct es una
+        fracción (0.02 = 2%), no un porcentaje ya multiplicado por 100.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    min_days = math.ceil(days * _MIN_COVERAGE_RATIO)
+
+    rows = (
+        db.query(
+            PriceHistory.product_id,
+            PriceHistory.price,
+            PriceHistory.scraped_at,
+            Product.category,
+        )
+        .join(Product, Product.id == PriceHistory.product_id)
+        .filter(PriceHistory.scraped_at >= cutoff)
+        .order_by(PriceHistory.product_id, PriceHistory.scraped_at.asc())
+        .all()
+    )
+
+    by_product: dict[UUID, list[tuple[datetime, float, str]]] = defaultdict(list)
+    for product_id, price, scraped_at, category in rows:
+        by_product[product_id].append((scraped_at, float(price), category.value))
+
+    changes: dict[UUID, tuple[float, str]] = {}
+    for product_id, points in by_product.items():
+        distinct_days = {ts.date() for ts, _, _ in points}
+        if len(distinct_days) < min_days:
+            continue
+        first_price = points[0][1]
+        last_price = points[-1][1]
+        if first_price == 0:
+            continue
+        category_value = points[0][2]
+        changes[product_id] = ((last_price - first_price) / first_price, category_value)
+
+    return changes
 
 
 @router.get("/price-vs-inflation", response_model=PriceInflationAnalysis)
