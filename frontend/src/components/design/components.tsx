@@ -39,6 +39,20 @@ export const fmtPct = (n: number, { decimals = 1, sign = true }: { decimals?: nu
 export const fmtInt = (n: number): string => n.toLocaleString("es-AR");
 
 // ============================================================================
+// Relative time ("hace 3 horas", "hace 2 días")
+// ============================================================================
+export const fmtRelativeTime = (isoDate: string): string => {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 1) return "recién";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH} h`;
+  const diffD = Math.round(diffH / 24);
+  return `hace ${diffD} día${diffD === 1 ? "" : "s"}`;
+};
+
+// ============================================================================
 // Price component
 // ============================================================================
 export function Price({ value, size = "md", currency = "$" }: { value: number; size?: "sm" | "md" | "lg" | "xl"; currency?: string }) {
@@ -304,13 +318,13 @@ export function BarChart({ data, height = 240, color = "var(--primary)", valueFm
     return () => ro.disconnect();
   }, []);
 
-  if (!data.length) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>Sin datos</div>;
+  if (!data.length) return <div ref={ref} style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>Sin datos</div>;
 
   const pad = { t: 24, r: 12, b: 32, l: 36 };
-  const innerW = width - pad.l - pad.r;
+  const innerW = Math.max(0, width - pad.l - pad.r);
   const innerH = height - pad.t - pad.b;
   const max = Math.max(...data.map(d => d.v)) * 1.15;
-  const barW = innerW / data.length * 0.66;
+  const barW = Math.max(0, innerW / data.length * 0.66);
   const step = innerW / data.length;
 
   return (
@@ -383,11 +397,11 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
   }, []);
 
   if (!labels.length || !a.length || !b.length) {
-    return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>Sin datos históricos</div>;
+    return <div ref={ref} style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>Sin datos históricos</div>;
   }
 
   const pad = { t: 16, r: 60, b: 32, l: 50 };
-  const innerW = width - pad.l - pad.r;
+  const innerW = Math.max(0, width - pad.l - pad.r);
   const innerH = height - pad.t - pad.b;
   const all = [...a, ...b];
   let minV = Math.min(...all);

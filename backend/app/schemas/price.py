@@ -18,10 +18,6 @@ class PriceHistoryBase(BaseModel):
     discount_percentage: Optional[Decimal] = Field(None, ge=0, le=100, decimal_places=2)
     url: Optional[str] = Field(None, max_length=500)
     in_stock: bool = True
-    province: Optional[str] = None
-    city: Optional[str] = None
-    region: Optional[str] = None
-    store_id: Optional[str] = None
 
 
 class PriceHistoryCreate(PriceHistoryBase):
@@ -66,9 +62,8 @@ class CurrentPrice(BaseModel):
     discount_percentage: Optional[Decimal] = None
     url: Optional[str] = None
     last_updated: datetime
+    is_stale: bool = False
     in_stock: bool
-    province: Optional[str] = None
-    region: Optional[str] = None
     product_image_url: Optional[str] = None
 
     class Config:

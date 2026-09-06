@@ -36,3 +36,8 @@ Thumbs.db
 .vscode/
 *.swp
 .neon
+
+# Claude Code local state (settings, skill cache, worktrees) — no es código del proyecto
+.claude/
+.agents/
+skills-lock.json

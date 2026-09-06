@@ -5,7 +5,7 @@ GET /api/v1/products          — Listado con paginación y filtros
 GET /api/v1/products/search   — Búsqueda avanzada con filtros de precio y variación
 GET /api/v1/products/{id}     — Detalle con precios actuales por supermercado
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Literal
 from uuid import UUID
@@ -136,8 +136,8 @@ def _variation_subquery(db: Session):
         .subquery()
     )
 
-    cutoff_start = datetime.now(timezone.utc) - timedelta(days=35)
-    cutoff_end = datetime.now(timezone.utc) - timedelta(days=25)
+    cutoff_start = datetime.utcnow() - timedelta(days=35)
+    cutoff_end = datetime.utcnow() - timedelta(days=25)
     old_sq = (
         db.query(
             PriceHistory.product_id,
@@ -224,6 +224,7 @@ def _build_products_with_prices(
                     discount_percentage=ph.discount_percentage,
                     url=ph.url,
                     last_updated=ph.scraped_at,
+                    is_stale=ph.is_stale,
                     in_stock=ph.in_stock,
                 )
                 for ph in current_prices
@@ -398,6 +399,7 @@ def list_products(
     limit: int = Query(50, ge=1, le=200),
     category: ProductCategory | None = None,
     search: str | None = Query(None, min_length=1),
+    supermarkets: list[str] | None = Query(None, description="Lista de supermercados a filtrar"),
     sort: SortOrder = SortOrder.RELEVANCE,
     db: Session = Depends(get_db),
 ):
@@ -407,6 +409,32 @@ def list_products(
         query = query.filter(Product.category == category)
     if search:
         query = query.filter(Product.normalized_name.ilike(f"%{search.lower()}%"))
+
+    if supermarkets:
+        latest_price_sq = (
+            db.query(
+                PriceHistory.product_id,
+                PriceHistory.supermarket,
+                func.max(PriceHistory.scraped_at).label("max_at"),
+            )
+            .group_by(PriceHistory.product_id, PriceHistory.supermarket)
+            .subquery()
+        )
+        latest_ph = (
+            db.query(PriceHistory.product_id, PriceHistory.supermarket)
+            .join(
+                latest_price_sq,
+                and_(
+                    PriceHistory.product_id == latest_price_sq.c.product_id,
+                    PriceHistory.supermarket == latest_price_sq.c.supermarket,
+                    PriceHistory.scraped_at == latest_price_sq.c.max_at,
+                ),
+            )
+            .subquery()
+        )
+        query = query.join(latest_ph, Product.id == latest_ph.c.product_id).filter(
+            latest_ph.c.supermarket.in_(supermarkets)
+        )
 
     total = query.count()
 

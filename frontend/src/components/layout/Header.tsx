@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/design/icons";
 import { Icon } from "@/components/design/components";
-import { useRegion } from "@/lib/regionContext";
 import { useTheme } from "@/lib/themeContext";
+import { SUPERMARKETS_DESIGN } from "@/lib/categoryMap";
 
 // Tab icons — SVGs inline desde app.jsx del diseño de referencia
 function IconResults() {
@@ -40,24 +40,45 @@ const TABS = [
   { label: "Resultados", href: "/resultados",  icon: <IconResults /> },
   { label: "Producto",   href: "/producto",    icon: <IconProduct /> },
   { label: "Economía",   href: "/economia",    icon: <IconDashboard /> },
-  { label: "Cobertura",  href: "/cobertura",   icon: <Icon.pin /> },
 ];
 
-const REGIONS = ["Todas las regiones", "AMBA", "Pampeana", "Centro", "Cuyo", "NOA", "NEA", "Patagonia"];
-const SUPERMARKETS = ["Todos", "Coto", "Carrefour", "Disco", "Átomo", "Vea", "Jumbo", "Día", "La Anónima", "Chango Más"];
+const ALL_SUPERMARKETS_ID = "__all__";
+const SUPERMARKETS = [
+  { id: ALL_SUPERMARKETS_ID, label: "Todos" },
+  ...SUPERMARKETS_DESIGN.map((s) => ({ id: s.id, label: s.name })),
+];
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const { region, setRegion }          = useRegion();
   const { theme, toggleTheme }         = useTheme();
-  const [supermarket, setSupermarket]  = useState("Todos");
-  const [regionOpen, setRegionOpen]    = useState(false);
   const [smOpen, setSmOpen]            = useState(false);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
+  };
+
+  // El filtro de supermercado vive en la URL de /resultados (?super=id), no en
+  // estado local — así el selector del header siempre refleja el filtro real
+  // en vez de tener su propia copia desincronizada (mismo tipo de bug que el
+  // de los gráficos con ancho fantasma: dos fuentes de verdad que divergen).
+  const isOnResultados = pathname.startsWith("/resultados");
+  const activeSupermarkets = isOnResultados ? searchParams.getAll("super") : [];
+  const supermarketId = activeSupermarkets.length === 1 ? (activeSupermarkets[0] ?? ALL_SUPERMARKETS_ID) : ALL_SUPERMARKETS_ID;
+  const supermarketLabel = activeSupermarkets.length > 1
+    ? `${activeSupermarkets.length} supermercados`
+    : SUPERMARKETS.find((s) => s.id === supermarketId)?.label ?? "Todos";
+
+  const handleSupermarketSelect = (id: string) => {
+    // Fuera de /resultados, elegir "Todos" no tiene nada que limpiar: no navegamos.
+    if (!isOnResultados && id === ALL_SUPERMARKETS_ID) return;
+    const params = new URLSearchParams(isOnResultados ? searchParams.toString() : undefined);
+    params.delete("super");
+    if (id !== ALL_SUPERMARKETS_ID) params.append("super", id);
+    router.push(`/resultados?${params.toString()}`);
   };
 
   return (
@@ -83,20 +104,12 @@ export default function Header() {
 
       <div className="tb-control">
         <Dropdown
-          open={regionOpen}
-          setOpen={setRegionOpen}
-          label={<><Icon.pin /> Región: <strong>{region}</strong> <Icon.chevron /></>}
-          items={REGIONS}
-          selected={region}
-          onSelect={setRegion}
-        />
-        <Dropdown
           open={smOpen}
           setOpen={setSmOpen}
-          label={<>Supermercados: <strong>{supermarket}</strong> <Icon.chevron /></>}
+          label={<>Supermercados: <strong>{supermarketLabel}</strong> <Icon.chevron /></>}
           items={SUPERMARKETS}
-          selected={supermarket}
-          onSelect={setSupermarket}
+          selected={supermarketId}
+          onSelect={handleSupermarketSelect}
         />
         <button
           className="tb-pill"
@@ -117,9 +130,9 @@ function Dropdown({
   open: boolean;
   setOpen: (v: boolean) => void;
   label: React.ReactNode;
-  items: string[];
+  items: { id: string; label: string }[];
   selected: string;
-  onSelect: (v: string) => void;
+  onSelect: (id: string) => void;
 }) {
   return (
     <div style={{ position: "relative" }}>
@@ -142,20 +155,20 @@ function Dropdown({
           }}>
             {items.map((it) => (
               <button
-                key={it}
-                onClick={() => { onSelect(it); setOpen(false); }}
+                key={it.id}
+                onClick={() => { onSelect(it.id); setOpen(false); }}
                 style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   width: "100%", padding: "8px 10px",
-                  background: selected === it ? "var(--primary-tint)" : "none",
+                  background: selected === it.id ? "var(--primary-tint)" : "none",
                   border: 0, borderRadius: 6, cursor: "pointer",
                   fontSize: 13,
-                  color: selected === it ? "var(--primary)" : "var(--fg)",
-                  fontWeight: selected === it ? 600 : 400,
+                  color: selected === it.id ? "var(--primary)" : "var(--fg)",
+                  fontWeight: selected === it.id ? 600 : 400,
                 }}
               >
-                {it}
-                {selected === it && <span style={{ color: "var(--primary)", fontSize: 12 }}>✓</span>}
+                {it.label}
+                {selected === it.id && <span style={{ color: "var(--primary)", fontSize: 12 }}>✓</span>}
               </button>
             ))}
           </div>

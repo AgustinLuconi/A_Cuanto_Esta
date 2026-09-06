@@ -6,22 +6,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { searchProducts, getProductsList, getProductFacets } from "@/lib/api";
 import type { SortOrder } from "@/lib/api";
-import { useRegion } from "@/lib/regionContext";
 import type { ProductCategory, ProductList, ProductWithPrices } from "@/types";
-import { CATEGORIES_DESIGN, DESIGN_TO_BACKEND } from "@/lib/categoryMap";
+import { CATEGORIES_DESIGN, DESIGN_TO_BACKEND, SUPERMARKETS_DESIGN as SUPERMARKETS_LIST } from "@/lib/categoryMap";
 import { Price, SMSwatch, ImagePlaceholder, Icon } from "@/components/design/components";
-
-const SUPERMARKETS_LIST = [
-  { id: "coto",       name: "Coto"        },
-  { id: "carrefour",  name: "Carrefour"   },
-  { id: "disco",      name: "Disco"       },
-  { id: "atomo",      name: "Átomo"       },
-  { id: "vea",        name: "Vea"         },
-  { id: "jumbo",      name: "Jumbo"       },
-  { id: "dia",        name: "Día"         },
-  { id: "la_anonima", name: "La Anónima"  },
-  { id: "chango_mas", name: "Chango Más"  },
-];
 
 export default function ResultadosContent() {
   const searchParams = useSearchParams();
@@ -29,9 +16,11 @@ export default function ResultadosContent() {
 
   const q = searchParams.get("q") ?? "";
   const categoria = searchParams.get("categoria") ?? "";
-  const superFilterParam = searchParams.getAll("super");
-
-  const [smFilter, setSmFilter] = useState<Set<string>>(new Set(superFilterParam));
+  // El filtro de supermercado vive en la URL (?super=id, uno o varios), no en
+  // estado local — así el header (que también lee/escribe ?super= para su
+  // selector rápido) y esta página siempre están de acuerdo sobre el filtro activo.
+  const smFilterArray = searchParams.getAll("super");
+  const smFilter = new Set(smFilterArray);
   const [sort, setSort] = useState<SortOrder>("relevance");
   const [priceMin, setPriceMin] = useState<string>("");
   const [priceMax, setPriceMax] = useState<string>("");
@@ -42,7 +31,6 @@ export default function ResultadosContent() {
   const [smOpen, setSmOpen] = useState(true);
   const [priceOpen, setPriceOpen] = useState(false);
   const [varOpen, setVarOpen] = useState(false);
-  const { region, setRegion } = useRegion();
 
   const hasQ = Boolean(q && q.trim());
   const backendCat = categoria ? (DESIGN_TO_BACKEND[categoria] as ProductCategory) : undefined;
@@ -62,7 +50,7 @@ export default function ResultadosContent() {
   }, [priceMin, priceMax]);
 
   const { data: productList, isLoading } = useQuery<ProductList>({
-    queryKey: ["products", q, categoria, page, sort, committedMin, committedMax, variationFilter],
+    queryKey: ["products", q, categoria, page, sort, committedMin, committedMax, variationFilter, smFilterArray.join(",")],
     queryFn: () =>
       hasQ
         ? searchProducts(
@@ -70,9 +58,10 @@ export default function ResultadosContent() {
             committedMin ? parseFloat(committedMin) : undefined,
             committedMax ? parseFloat(committedMax) : undefined,
             variationFilter ?? undefined,
+            smFilterArray.length > 0 ? smFilterArray : undefined,
           )
         : backendCat
-        ? getProductsList(backendCat, LIMIT, skip, sort)
+        ? getProductsList(backendCat, LIMIT, skip, sort, smFilterArray.length > 0 ? smFilterArray : undefined)
         : Promise.resolve({ items: [], total: 0, skip, limit: LIMIT, supermarket_counts: {}, variation_counts: {} }),
     enabled: hasQ || Boolean(backendCat),
     staleTime: 5 * 60 * 1000,
@@ -88,12 +77,18 @@ export default function ResultadosContent() {
   const total = productList?.total ?? 0;
   const totalPages = total > 0 ? Math.ceil(total / LIMIT) : 0;
 
-  const goToPage = (newPage: number) => {
+  const buildResultsUrl = (overrides: { page?: number; superSet?: Set<string> } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (categoria) params.set("categoria", categoria);
-    if (newPage > 1) params.set("page", String(newPage));
-    router.push(`/resultados?${params.toString()}`);
+    for (const sm of Array.from(overrides.superSet ?? smFilter)) params.append("super", sm);
+    const targetPage = overrides.page ?? page;
+    if (targetPage > 1) params.set("page", String(targetPage));
+    return `/resultados?${params.toString()}`;
+  };
+
+  const goToPage = (newPage: number) => {
+    router.push(buildResultsUrl({ page: newPage }));
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -105,7 +100,7 @@ export default function ResultadosContent() {
   const toggleSm = (id: string) => {
     const next = new Set(smFilter);
     if (next.has(id)) next.delete(id); else next.add(id);
-    setSmFilter(next);
+    router.push(buildResultsUrl({ page: 1, superSet: next }));
   };
 
   const applyPriceChip = (min: string, max: string) => {
@@ -324,11 +319,10 @@ export default function ResultadosContent() {
 
           <button className="btn secondary" style={{ width: "100%", justifyContent: "center" }}
             onClick={() => {
-              setSmFilter(new Set());
               setPriceMin(""); setPriceMax("");
               setCommittedMin(""); setCommittedMax("");
               setVariationFilter(null);
-              if (page !== 1) goToPage(1);
+              router.push(buildResultsUrl({ page: 1, superSet: new Set() }));
             }}>
             Limpiar filtros
           </button>
@@ -350,11 +344,6 @@ export default function ResultadosContent() {
                 <button className="chip active"
                   onClick={() => router.push(categoria ? `/resultados?categoria=${categoria}` : "/resultados")}>
                   &quot;{q}&quot; <Icon.close style={{ marginLeft: 2 }} />
-                </button>
-              )}
-              {region !== "Todas las regiones" && (
-                <button className="chip active" onClick={() => setRegion("Todas las regiones")}>
-                  <Icon.pin style={{ marginRight: 2 }} /> {region} <Icon.close style={{ marginLeft: 2 }} />
                 </button>
               )}
             </div>
@@ -408,14 +397,14 @@ export default function ResultadosContent() {
               {sort === "price_asc" && products[0] ? (
                 <>
                   {/* Ordenado por precio ascendente: el primero es realmente el más barato */}
-                  <ProductCardFull product={products[0]} isCheapest smFilter={smFilter} />
+                  <ProductCardFull product={products[0]} isCheapest />
                   {products.slice(1).map((p) => (
-                    <ProductCardFull key={p.id} product={p} smFilter={smFilter} />
+                    <ProductCardFull key={p.id} product={p} />
                   ))}
                 </>
               ) : (
                 products.map((p) => (
-                  <ProductCardFull key={p.id} product={p} smFilter={smFilter} />
+                  <ProductCardFull key={p.id} product={p} />
                 ))
               )}
               {totalPages > 1 && (
@@ -434,22 +423,15 @@ export default function ResultadosContent() {
 // /products/search y /products (ver ProductWithPrices), así que no hace
 // falta un fetch por card.
 // ============================================================================
-function ProductCardFull({ product, isCheapest = false, smFilter }: {
+function ProductCardFull({ product, isCheapest = false }: {
   product: ProductWithPrices;
   isCheapest?: boolean;
-  smFilter: Set<string>;
 }) {
   const router = useRouter();
 
   const lowestPrice = product.lowest_price ?? null;
   const cheapestSm = product.current_prices.reduce((best, cp) =>
     (!best || cp.price < best.price) ? cp : best, null as ProductWithPrices["current_prices"][0] | null);
-
-  // Client-side supermarket filter
-  if (smFilter.size > 0) {
-    const hasSm = product.current_prices.some((cp) => smFilter.has(cp.supermarket));
-    if (!hasSm) return null;
-  }
 
   const imageEl = product.image_url
     ? <img src={product.image_url} alt={product.name} style={{ width: isCheapest ? 110 : 80, height: isCheapest ? 110 : 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", flexShrink: 0 }} />

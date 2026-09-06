@@ -29,9 +29,6 @@ class BaseScraper(ABC):
         self.timeout = settings.SCRAPING_TIMEOUT
         self.max_retries = 3
         self.retry_base_delay = 5
-        self.default_province = None
-        self.default_region = None
-        self.default_city = None
 
     def _get(self, url: str, params: dict = None) -> dict | None:
         """GET con retry automático para HTTP 429 y delay post-request."""

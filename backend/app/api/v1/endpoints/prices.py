@@ -122,9 +122,8 @@ def compare_prices(
                 discount_percentage=ph.discount_percentage,
                 url=ph.url,
                 last_updated=ph.scraped_at,
+                is_stale=ph.is_stale,
                 in_stock=ph.in_stock,
-                province=ph.province,
-                region=ph.region,
             )
             for ph in current_prices
         ],
@@ -186,9 +185,8 @@ def get_current_prices(
             discount_percentage=ph.discount_percentage,
             url=ph.url,
             last_updated=ph.scraped_at,
+            is_stale=ph.is_stale,
             in_stock=ph.in_stock,
-            province=ph.province,
-            region=ph.region,
             product_image_url=ph.product.image_url if ph.product else None,
         )
         for ph in records

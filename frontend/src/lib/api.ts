@@ -4,20 +4,21 @@ import { env } from "@/lib/env";
 import {
   EconomicContextSchema,
   EconomicIndicatorSchema,
-  LocationCoverageSchema,
   PriceHistoryRecordSchema,
   PriceIndexSchema,
+  PriceInflationAnalysisSchema,
   ProductCountSchema,
   ProductListSchema,
   ProductWithPricesSchema,
   type EconomicContext,
-  type LocationCoverage,
   type PriceHistoryRecord,
   type PriceIndex,
+  type PriceInflationAnalysis,
   type ProductCategory,
   type ProductCount,
   type ProductList,
   type ProductWithPrices,
+  type Supermarket,
 } from "@/types";
 
 const api = axios.create({
@@ -78,11 +79,15 @@ export async function getProductsList(
   category?: ProductCategory,
   limit = 50,
   skip = 0,
-  sort: SortOrder = "relevance"
+  sort: SortOrder = "relevance",
+  supermarkets?: string[]
 ): Promise<ProductList> {
-  const params: Record<string, string> = { limit: String(limit), skip: String(skip), sort };
-  if (category) params.category = category;
-  const { data } = await api.get("/products", { params });
+  const params = new URLSearchParams({ limit: String(limit), skip: String(skip), sort });
+  if (category) params.append("category", category);
+  if (supermarkets && supermarkets.length > 0) {
+    for (const sm of supermarkets) params.append("supermarkets", sm);
+  }
+  const { data } = await api.get(`/products?${params.toString()}`);
   return ProductListSchema.parse(data);
 }
 
@@ -153,11 +158,6 @@ export async function getRiskCountryHistory(
   }));
 }
 
-export async function getLocationCoverage(): Promise<LocationCoverage> {
-  const { data } = await api.get("/locations/coverage");
-  return LocationCoverageSchema.parse(data);
-}
-
 export async function getProductFacets(q?: string): Promise<Record<string, number>> {
   const params: Record<string, string> = {};
   if (q) params.q = q;
@@ -173,4 +173,22 @@ export async function getPriceIndex(days = 7): Promise<PriceIndex> {
 export async function getCategoryVariation(days = 30): Promise<Record<string, number>> {
   const { data } = await api.get("/analysis/category-variation", { params: { days } });
   return z.record(z.string(), z.number()).parse(data);
+}
+
+export async function getPriceVsInflation(
+  productId: string,
+  supermarket: Supermarket,
+  days = 30
+): Promise<PriceInflationAnalysis | null> {
+  try {
+    const { data } = await api.get("/analysis/price-vs-inflation", {
+      params: { product_id: productId, supermarket, days },
+    });
+    return PriceInflationAnalysisSchema.parse(data);
+  } catch (err) {
+    if (axios.isAxiosError(err) && (err.response?.status === 404 || err.response?.status === 400)) {
+      return null;
+    }
+    throw err;
+  }
 }

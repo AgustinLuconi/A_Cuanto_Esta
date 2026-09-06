@@ -70,9 +70,8 @@ export const CurrentPriceSchema = z.object({
   discount_percentage: z.coerce.number().nullable().default(null),
   url: z.string().nullable().default(null),
   last_updated: z.string(),
+  is_stale: z.boolean().default(false),
   in_stock: z.boolean().default(true),
-  province: z.string().nullable().default(null),
-  region: z.string().nullable().default(null),
   product_image_url: z.string().nullable().default(null),
 });
 export type CurrentPrice = z.infer<typeof CurrentPriceSchema>;
@@ -155,10 +154,21 @@ export const PriceIndexSchema = z.object({
 });
 export type PriceIndex = z.infer<typeof PriceIndexSchema>;
 
+export const PriceInflationAnalysisSchema = z.object({
+  product_name: z.string(),
+  supermarket: SupermarketSchema,
+  period_days: z.number(),
+  price_start: z.number(),
+  price_end: z.number(),
+  price_change_percent: z.number(),
+  inflation_period_percent: z.number(),
+  comparison: z.enum(["above", "below", "equal"]),
+  difference_points: z.number(),
+  analysis_text: z.string(),
+});
+export type PriceInflationAnalysis = z.infer<typeof PriceInflationAnalysisSchema>;
+
 export const ProductCountSchema = z.object({
   count: z.number(),
 });
 export type ProductCount = z.infer<typeof ProductCountSchema>;
-
-export const LocationCoverageSchema = z.record(z.string(), z.unknown());
-export type LocationCoverage = z.infer<typeof LocationCoverageSchema>;

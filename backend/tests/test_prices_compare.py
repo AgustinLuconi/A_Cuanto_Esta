@@ -31,9 +31,8 @@ def _make_price(supermarket, price):
         discount_percentage=None,
         url=None,
         scraped_at=datetime(2026, 1, 1),
+        is_stale=True,
         in_stock=True,
-        province=None,
-        region=None,
     )
 
 

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import "@/components/design/styles.css";
 import QueryProvider from "@/components/layout/QueryProvider";
 import Header from "@/components/layout/Header";
-import { RegionProvider } from "@/lib/regionContext";
 import { ThemeProvider } from "@/lib/themeContext";
 
 export const metadata: Metadata = {
@@ -43,10 +43,10 @@ export default function RootLayout({
       <body className="app">
         <ThemeProvider>
           <QueryProvider>
-            <RegionProvider>
+            <Suspense fallback={null}>
               <Header />
-              {children}
-            </RegionProvider>
+            </Suspense>
+            {children}
           </QueryProvider>
         </ThemeProvider>
       </body>

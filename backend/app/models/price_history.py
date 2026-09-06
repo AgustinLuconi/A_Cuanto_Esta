@@ -4,11 +4,15 @@ Modelo de base de datos para Historial de Precios
 from sqlalchemy import Column, String, Numeric, Boolean, DateTime, ForeignKey, Index, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 import enum
 
 from app.config.database import Base
+
+# Umbral a partir del cual un precio se considera desactualizado (scraping diario
+# corre una vez por día; 72hs da margen para un scrape fallido sin marcar todo como stale)
+STALE_THRESHOLD_HOURS = 72
 
 
 class Supermarket(str, enum.Enum):
@@ -53,12 +57,6 @@ class PriceHistory(Base):
     # Disponibilidad
     in_stock = Column(Boolean, default=True)
 
-    # Ubicación geográfica (String para flexibilidad — validación via enums Python)
-    province = Column(String(50), nullable=True, index=True)
-    city = Column(String(100), nullable=True)
-    region = Column(String(50), nullable=True, index=True)
-    store_id = Column(String(100), nullable=True)
-
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
@@ -69,8 +67,6 @@ class PriceHistory(Base):
     __table_args__ = (
         Index('idx_product_supermarket_date', 'product_id', 'supermarket', 'scraped_at'),
         Index('idx_supermarket_date', 'supermarket', 'scraped_at'),
-        Index('idx_price_province_date', 'province', 'scraped_at'),
-        Index('idx_price_region_supermarket', 'region', 'supermarket'),
     )
     
     def __repr__(self):
@@ -87,3 +83,8 @@ class PriceHistory(Base):
         if self.was_on_sale and self.original_price:
             return float(self.original_price - self.price)
         return 0.0
+
+    @property
+    def is_stale(self) -> bool:
+        """True si este precio no se actualizó en las últimas STALE_THRESHOLD_HOURS horas."""
+        return datetime.utcnow() - self.scraped_at > timedelta(hours=STALE_THRESHOLD_HOURS)

@@ -3,10 +3,10 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getProduct, getPriceHistory, getInflationHistory } from "@/lib/api";
+import { getProduct, getPriceHistory, getInflationHistory, getPriceVsInflation } from "@/lib/api";
 import { buildPriceChartData, buildInflationFactors } from "@/lib/priceHistoryChart";
 import {
-  Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice,
+  Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice, fmtRelativeTime,
 } from "@/components/design/components";
 import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
 import type { CurrentPrice } from "@/types";
@@ -26,6 +26,16 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
     queryKey: ["inflation6m"],
     queryFn: () => getInflationHistory(6, "monthly"),
     staleTime: 30 * 60 * 1000,
+  });
+
+  const cheapestSupermarket = product
+    ? [...product.current_prices].sort((a, b) => a.price - b.price)[0]?.supermarket
+    : undefined;
+
+  const { data: priceVsInflation } = useQuery({
+    queryKey: ["priceVsInflation", params.id, cheapestSupermarket],
+    queryFn: () => getPriceVsInflation(params.id, cheapestSupermarket!, 30),
+    enabled: !!cheapestSupermarket,
   });
 
   if (isLoading) {
@@ -115,10 +125,14 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
                   <SMSwatch sm={cp.supermarket} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{smName}</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                    <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap", alignItems: "center" }}>
                       {i === 0 && <span className="badge cheapest" style={{ fontSize: 10.5 }}>⭐ Más barato</span>}
                       {cp.was_on_sale && <span className="badge" style={{ fontSize: 10.5 }}>En oferta</span>}
                       {!cp.in_stock && <span className="badge" style={{ fontSize: 10.5, color: "var(--fg-4)" }}>Sin stock</span>}
+                      {cp.is_stale && <span className="badge" style={{ fontSize: 10.5, color: "var(--warn)" }}>Precio desactualizado</span>}
+                      <span style={{ fontSize: 11, color: "var(--fg-4)" }}>
+                        actualizado {fmtRelativeTime(cp.last_updated)}
+                      </span>
                     </div>
                   </div>
                   <Price value={cp.price} size="lg" />
@@ -132,6 +146,23 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
             })}
           </div>
         </>
+      )}
+
+      {/* PRECIO VS. INFLACIÓN */}
+      {priceVsInflation && (
+        <div className="card" style={{ padding: 16, marginBottom: 22, display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>
+            {priceVsInflation.comparison === "above" ? "📈" : priceVsInflation.comparison === "below" ? "📉" : "➖"}
+          </span>
+          <div>
+            <div style={{ fontSize: 13.5 }}>{priceVsInflation.analysis_text}</div>
+            <div style={{ fontSize: 11.5, color: "var(--fg-4)", marginTop: 3 }}>
+              {SM_BY_ID[priceVsInflation.supermarket]?.name ?? priceVsInflation.supermarket} · últimos {priceVsInflation.period_days} días ·
+              {" "}precio {priceVsInflation.price_change_percent > 0 ? "+" : ""}{priceVsInflation.price_change_percent.toFixed(1).replace(".", ",")}%
+              {" "}vs. inflación {priceVsInflation.inflation_period_percent.toFixed(1).replace(".", ",")}%
+            </div>
+          </div>
+        </div>
       )}
 
       {/* GRÁFICO HISTÓRICO */}

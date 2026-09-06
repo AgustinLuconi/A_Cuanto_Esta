@@ -26,6 +26,26 @@ export const CATEGORIES_DESIGN: DesignCategory[] = [
   { id: "otros",            name: "Otros",             backendId: "otros"           },
 ];
 
+export interface DesignSupermarket {
+  id: string;
+  name: string;
+}
+
+// Lista canónica de supermercados (id = valor real del backend). Compartida entre
+// el selector rápido del header y el filtro de checkboxes de /resultados para que
+// ambos hablen de los mismos supermercados.
+export const SUPERMARKETS_DESIGN: DesignSupermarket[] = [
+  { id: "coto",       name: "Coto"        },
+  { id: "carrefour",  name: "Carrefour"   },
+  { id: "disco",      name: "Disco"       },
+  { id: "atomo",      name: "Átomo"       },
+  { id: "vea",        name: "Vea"         },
+  { id: "jumbo",      name: "Jumbo"       },
+  { id: "dia",        name: "Día"         },
+  { id: "la_anonima", name: "La Anónima"  },
+  { id: "chango_mas", name: "Chango Más"  },
+];
+
 // Design category ID → backend category ID
 export const DESIGN_TO_BACKEND: Record<string, ProductCategory> = Object.fromEntries(
   CATEGORIES_DESIGN.map((c) => [c.id, c.backendId])
