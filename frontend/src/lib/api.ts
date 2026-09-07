@@ -11,6 +11,7 @@ import {
   ProductListSchema,
   ProductWithPricesSchema,
   TopMoverSchema,
+  DiscountCheckSchema,
   type EconomicContext,
   type PriceHistoryRecord,
   type PriceIndex,
@@ -21,6 +22,7 @@ import {
   type ProductWithPrices,
   type Supermarket,
   type TopMover,
+  type DiscountCheck,
 } from "@/types";
 
 const api = axios.create({
@@ -198,4 +200,21 @@ export async function getPriceVsInflation(
 export async function getTopMovers(days = 7, limit = 6): Promise<TopMover[]> {
   const { data } = await api.get("/analysis/top-movers", { params: { days, limit } });
   return z.array(TopMoverSchema).parse(data);
+}
+
+export async function getDiscountCheck(
+  productId: string,
+  supermarket: Supermarket
+): Promise<DiscountCheck | null> {
+  try {
+    const { data } = await api.get("/analysis/discount-check", {
+      params: { product_id: productId, supermarket },
+    });
+    return DiscountCheckSchema.parse(data);
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return null;
+    }
+    throw err;
+  }
 }

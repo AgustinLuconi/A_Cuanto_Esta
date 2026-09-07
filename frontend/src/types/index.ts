@@ -175,6 +175,17 @@ export const TopMoverSchema = z.object({
 });
 export type TopMover = z.infer<typeof TopMoverSchema>;
 
+export const DiscountCheckSchema = z.object({
+  has_active_sale: z.boolean(),
+  claimed_original_price: z.number().nullable().default(null),
+  claimed_discount_percent: z.number().nullable().default(null),
+  real_recent_max_price: z.number().nullable().default(null),
+  real_discount_percent: z.number().nullable().default(null),
+  is_suspicious: z.boolean().default(false),
+  reason: z.string(),
+});
+export type DiscountCheck = z.infer<typeof DiscountCheckSchema>;
+
 export const ProductCountSchema = z.object({
   count: z.number(),
 });

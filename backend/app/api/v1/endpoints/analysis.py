@@ -314,3 +314,96 @@ def price_vs_inflation(
         difference_points=difference,
         analysis_text=_build_analysis_text(comparison, price_change, inflation_period_pct, difference),
     )
+
+
+class DiscountCheck(BaseModel):
+    has_active_sale: bool
+    claimed_original_price: float | None = None
+    claimed_discount_percent: float | None = None
+    real_recent_max_price: float | None = None
+    real_discount_percent: float | None = None
+    is_suspicious: bool = False
+    reason: str
+
+
+_DISCOUNT_LOOKBACK_DAYS = 45
+_DISCOUNT_TOLERANCE_PCT = 5.0
+
+
+@router.get("/discount-check", response_model=DiscountCheck)
+def discount_check(
+    product_id: UUID = Query(..., description="ID del producto"),
+    supermarket: Supermarket = Query(..., description="Supermercado"),
+    db: Session = Depends(get_db),
+):
+    """
+    Verifica si el "precio de lista" detrás de una oferta activa es real:
+    compara contra el precio más alto REALMENTE cobrado en los últimos
+    `_DISCOUNT_LOOKBACK_DAYS` días. Si el precio de lista declarado supera
+    ese máximo real (con un margen de tolerancia), el descuento probablemente
+    infla el precio "antes" para simular un ahorro que no es tal ("oferta falsa"
+    / "precio ancla" inflado) — un patrón conocido en e-commerce de supermercados.
+    """
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    current = (
+        db.query(PriceHistory)
+        .filter(
+            PriceHistory.product_id == product_id,
+            PriceHistory.supermarket == supermarket,
+        )
+        .order_by(PriceHistory.scraped_at.desc())
+        .first()
+    )
+    if not current:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No hay precios de {supermarket.value} para este producto",
+        )
+
+    if not current.was_on_sale or not current.original_price:
+        return DiscountCheck(has_active_sale=False, reason="Este precio no está marcado como oferta.")
+
+    cutoff = datetime.utcnow() - timedelta(days=_DISCOUNT_LOOKBACK_DAYS)
+    recent = (
+        db.query(PriceHistory.price)
+        .filter(
+            PriceHistory.product_id == product_id,
+            PriceHistory.supermarket == supermarket,
+            PriceHistory.scraped_at >= cutoff,
+            PriceHistory.id != current.id,
+        )
+        .all()
+    )
+    if not recent:
+        return DiscountCheck(
+            has_active_sale=True,
+            claimed_original_price=float(current.original_price),
+            claimed_discount_percent=float(current.discount_percentage) if current.discount_percentage else None,
+            reason="No hay suficiente historial reciente para verificar el precio de lista.",
+        )
+
+    real_max = max(float(p[0]) for p in recent)
+    claimed_original = float(current.original_price)
+    current_price = float(current.price)
+    real_discount_pct = round((1 - current_price / real_max) * 100, 2) if real_max else None
+    is_suspicious = claimed_original > real_max * (1 + _DISCOUNT_TOLERANCE_PCT / 100)
+
+    reason = (
+        f"El precio de lista (${claimed_original:.0f}) es más alto que cualquier precio real "
+        f"registrado en los últimos {_DISCOUNT_LOOKBACK_DAYS} días (máximo real: ${real_max:.0f})."
+        if is_suspicious
+        else "El precio de lista coincide con el historial real reciente."
+    )
+
+    return DiscountCheck(
+        has_active_sale=True,
+        claimed_original_price=claimed_original,
+        claimed_discount_percent=float(current.discount_percentage) if current.discount_percentage else None,
+        real_recent_max_price=real_max,
+        real_discount_percent=real_discount_pct,
+        is_suspicious=is_suspicious,
+        reason=reason,
+    )

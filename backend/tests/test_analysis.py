@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, _compute_product_price_changes, price_index, price_vs_inflation, category_variation, top_movers
+from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, _compute_product_price_changes, price_index, price_vs_inflation, category_variation, top_movers, discount_check
 from app.models.economic_indicator import EconomicIndicator
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
@@ -386,3 +386,99 @@ def test_top_movers_keeps_largest_magnitude_when_product_varies_in_multiple_supe
 
     assert len(result) == 1
     assert result[0].change_pct == pytest.approx(-0.20)
+
+
+# --- discount_check: endpoint --------------------------------------------
+
+
+def _current_ph(price, original_price, was_on_sale, discount_pct=None, id_=None):
+    return SimpleNamespace(
+        id=id_ or uuid4(),
+        price=price,
+        original_price=original_price,
+        was_on_sale=was_on_sale,
+        discount_percentage=discount_pct,
+        scraped_at=datetime.utcnow(),
+    )
+
+
+def _make_discount_db(product, current, recent_prices):
+    def query_side_effect(*args):
+        model = args[0]
+        m = MagicMock()
+        if model is Product:
+            m.filter.return_value.first.return_value = product
+        elif model is PriceHistory:
+            m.filter.return_value.order_by.return_value.first.return_value = current
+        else:
+            # db.query(PriceHistory.price) — selección de una sola columna
+            m.filter.return_value.all.return_value = [(p,) for p in recent_prices]
+        return m
+
+    db = MagicMock()
+    db.query.side_effect = query_side_effect
+    return db
+
+
+def test_discount_check_raises_404_when_product_not_found():
+    db = _make_discount_db(None, None, [])
+    with pytest.raises(HTTPException) as exc:
+        discount_check(product_id=uuid4(), supermarket=Supermarket.COTO, db=db)
+    assert exc.value.status_code == 404
+
+
+def test_discount_check_raises_404_when_no_price_record():
+    product = SimpleNamespace(id=uuid4())
+    db = _make_discount_db(product, None, [])
+    with pytest.raises(HTTPException) as exc:
+        discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert exc.value.status_code == 404
+
+
+def test_discount_check_returns_no_active_sale_when_not_on_sale():
+    product = SimpleNamespace(id=uuid4())
+    current = _current_ph(price=100, original_price=None, was_on_sale=False)
+    db = _make_discount_db(product, current, [])
+    result = discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert result.has_active_sale is False
+
+
+def test_discount_check_reports_insufficient_history_when_no_recent_prices():
+    product = SimpleNamespace(id=uuid4())
+    current = _current_ph(price=80, original_price=100, was_on_sale=True, discount_pct=20)
+    db = _make_discount_db(product, current, [])
+    result = discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert result.has_active_sale is True
+    assert result.real_recent_max_price is None
+    assert "suficiente historial" in result.reason
+
+
+def test_discount_check_not_suspicious_when_claimed_original_matches_real_history():
+    # El precio de lista (100) coincide con el máximo real reciente (100) -> no sospechoso.
+    product = SimpleNamespace(id=uuid4())
+    current = _current_ph(price=80, original_price=100, was_on_sale=True, discount_pct=20)
+    db = _make_discount_db(product, current, [95, 98, 100])
+    result = discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert result.is_suspicious is False
+    assert result.real_recent_max_price == 100
+    assert result.real_discount_percent == pytest.approx(20.0)
+
+
+def test_discount_check_flags_suspicious_when_claimed_original_far_above_real_history():
+    # El precio de lista (200) está muy por encima del máximo real reciente (100) -> sospechoso.
+    product = SimpleNamespace(id=uuid4())
+    current = _current_ph(price=80, original_price=200, was_on_sale=True, discount_pct=60)
+    db = _make_discount_db(product, current, [95, 98, 100])
+    result = discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert result.is_suspicious is True
+    assert "más alto" in result.reason
+
+
+def test_discount_check_within_tolerance_is_not_suspicious():
+    # Precio de lista (104) está apenas 4% sobre el máximo real (100) -> dentro de la
+    # tolerancia del 5%, no se marca como sospechoso (podría ser redondeo/timing).
+    product = SimpleNamespace(id=uuid4())
+    current = _current_ph(price=80, original_price=104, was_on_sale=True, discount_pct=23)
+    db = _make_discount_db(product, current, [100])
+    result = discount_check(product_id=product.id, supermarket=Supermarket.COTO, db=db)
+    assert result.is_suspicious is False

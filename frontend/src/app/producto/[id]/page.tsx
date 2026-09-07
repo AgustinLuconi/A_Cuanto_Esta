@@ -3,7 +3,7 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getProduct, getPriceHistory, getInflationHistory, getPriceVsInflation } from "@/lib/api";
+import { getProduct, getPriceHistory, getInflationHistory, getPriceVsInflation, getDiscountCheck } from "@/lib/api";
 import { buildPriceChartData, buildInflationFactors } from "@/lib/priceHistoryChart";
 import {
   Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice, fmtRelativeTime,
@@ -11,6 +11,7 @@ import {
 import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
 import { computeUnitPrice } from "@/lib/unitPrice";
 import type { CurrentPrice } from "@/types";
+import type { Supermarket } from "@/types";
 
 export default function ProductoPage({ params }: { params: { id: string } }) {
   const { data: product, isLoading, isError, error } = useQuery({
@@ -130,6 +131,7 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
                     <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap", alignItems: "center" }}>
                       {i === 0 && <span className="badge cheapest" style={{ fontSize: 10.5 }}>⭐ Más barato</span>}
                       {cp.was_on_sale && <span className="badge" style={{ fontSize: 10.5 }}>En oferta</span>}
+                      {cp.was_on_sale && <DiscountBadge productId={params.id} supermarket={cp.supermarket} />}
                       {!cp.in_stock && <span className="badge" style={{ fontSize: 10.5, color: "var(--fg-4)" }}>Sin stock</span>}
                       {cp.is_stale && <span className="badge" style={{ fontSize: 10.5, color: "var(--warn)" }}>Precio desactualizado</span>}
                       <span style={{ fontSize: 11, color: "var(--fg-4)" }}>
@@ -190,5 +192,27 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
         )}
       </div>
     </div>
+  );
+}
+
+// Verifica si el "antes" de una oferta es real comparándolo contra el
+// historial reciente — solo se pide cuando el precio está marcado en oferta.
+function DiscountBadge({ productId, supermarket }: { productId: string; supermarket: Supermarket }) {
+  const { data: check } = useQuery({
+    queryKey: ["discountCheck", productId, supermarket],
+    queryFn: () => getDiscountCheck(productId, supermarket),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  if (!check || !check.is_suspicious) return null;
+
+  return (
+    <span
+      className="badge"
+      title={check.reason}
+      style={{ fontSize: 10.5, color: "var(--bad)", cursor: "help" }}
+    >
+      ⚠ Descuento a verificar
+    </span>
   );
 }
