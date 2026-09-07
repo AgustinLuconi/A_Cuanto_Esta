@@ -83,6 +83,24 @@ def test_count_products():
     assert isinstance(data["count"], int)
 
 
+def test_get_products_bulk_returns_matching_products_and_ignores_unknown_ids():
+    listed = client.get("/api/v1/products?limit=2").json()["items"]
+    ids = [item["id"] for item in listed]
+    ids.append(str(uuid.uuid4()))  # ID inexistente -> se omite en silencio
+
+    response = client.get("/api/v1/products/bulk", params={"ids": ids})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    returned_ids = {item["id"] for item in data}
+    assert returned_ids == set(ids[:-1])
+
+
+def test_get_products_bulk_requires_at_least_one_id():
+    response = client.get("/api/v1/products/bulk")
+    assert response.status_code == 422
+
+
 def test_get_product_sitemap_ids():
     response = client.get("/api/v1/products/sitemap-ids")
     assert response.status_code == 200

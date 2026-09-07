@@ -10,10 +10,13 @@ import {
 } from "@/components/design/components";
 import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
 import { computeUnitPrice } from "@/lib/unitPrice";
+import { useShoppingList } from "@/lib/shoppingListContext";
 import type { CurrentPrice } from "@/types";
 import type { Supermarket } from "@/types";
 
 export default function ProductDetailClient({ id }: { id: string }) {
+  const { add, has } = useShoppingList();
+
   const { data: product, isLoading, isError, error } = useQuery({
     queryKey: ["product", id],
     queryFn: () => getProduct(id),
@@ -86,12 +89,23 @@ export default function ProductDetailClient({ id }: { id: string }) {
         {product.image_url
           ? <img src={product.image_url} alt={product.name} style={{ width: 140, height: 140, objectFit: "contain", borderRadius: 12, border: "1px solid var(--border)", flexShrink: 0 }} />
           : <ImagePlaceholder w={140} h={140} label={product.brand ?? product.name} />}
-        <div>
-          <div style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-            {product.brand}
-            {categoryLabel && <> · {categoryLabel}</>}
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                {product.brand}
+                {categoryLabel && <> · {categoryLabel}</>}
+              </div>
+              <h1 style={{ fontSize: 26, marginBottom: 8 }}>{product.full_name}</h1>
+            </div>
+            <button
+              className={has(product.id) ? "btn secondary" : "btn"}
+              style={{ fontSize: 12.5, flexShrink: 0 }}
+              onClick={() => add(product.id)}
+            >
+              <Icon.cart /> {has(product.id) ? "Agregar otra vez" : "Agregar al changuito"}
+            </button>
           </div>
-          <h1 style={{ fontSize: 26, marginBottom: 8 }}>{product.full_name}</h1>
           {product.barcode && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--fg-3)" }}>
               <Icon.barcode />

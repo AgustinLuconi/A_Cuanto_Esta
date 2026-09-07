@@ -100,6 +100,14 @@ export async function getProduct(id: string): Promise<ProductWithPrices> {
   return ProductWithPricesSchema.parse(data);
 }
 
+export async function getProductsBulk(ids: string[]): Promise<ProductWithPrices[]> {
+  if (ids.length === 0) return [];
+  const params = new URLSearchParams();
+  for (const id of ids) params.append("ids", id);
+  const { data } = await api.get(`/products/bulk?${params.toString()}`);
+  return z.array(ProductWithPricesSchema).parse(data);
+}
+
 export async function getPriceHistory(
   productId: string,
   days = 90

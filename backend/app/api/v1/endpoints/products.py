@@ -466,6 +466,21 @@ def count_products(
     return {"count": query.scalar()}
 
 
+@router.get("/bulk", response_model=list[product_schemas.ProductWithPrices])
+def get_products_bulk(
+    ids: list[UUID] = Query(..., description="IDs de producto a traer"),
+    db: Session = Depends(get_db),
+) -> list[product_schemas.ProductWithPrices]:
+    """
+    Trae varios productos por ID en una sola query (con precios incluidos),
+    en el mismo orden en que aparecen los productos encontrados — usado por
+    el changuito para no hacer un GET /products/{id} por ítem de la lista.
+    IDs inexistentes se omiten en silencio en vez de fallar toda la respuesta.
+    """
+    products = db.query(Product).filter(Product.id.in_(ids)).all()
+    return _build_products_with_prices(db, products)
+
+
 @router.get("/sitemap-ids")
 def get_product_sitemap_ids(db: Session = Depends(get_db)) -> list[dict]:
     """

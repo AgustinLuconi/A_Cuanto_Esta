@@ -10,6 +10,7 @@ import type { ProductCategory, ProductList, ProductWithPrices } from "@/types";
 import { CATEGORIES_DESIGN, DESIGN_TO_BACKEND, SUPERMARKETS_DESIGN as SUPERMARKETS_LIST } from "@/lib/categoryMap";
 import { Price, SMSwatch, ImagePlaceholder, Icon, fmtPrice } from "@/components/design/components";
 import { computeUnitPrice } from "@/lib/unitPrice";
+import { useShoppingList } from "@/lib/shoppingListContext";
 
 export default function ResultadosContent() {
   const searchParams = useSearchParams();
@@ -429,6 +430,8 @@ function ProductCardFull({ product, isCheapest = false }: {
   isCheapest?: boolean;
 }) {
   const router = useRouter();
+  const { add } = useShoppingList();
+  const addToCart = (e: React.MouseEvent) => { e.stopPropagation(); add(product.id); };
 
   const lowestPrice = product.lowest_price ?? null;
   const cheapestSm = product.current_prices.reduce((best, cp) =>
@@ -449,8 +452,11 @@ function ProductCardFull({ product, isCheapest = false }: {
           borderColor: "var(--good)",
           cursor: "pointer", position: "relative", overflow: "hidden",
         }}>
-        <div style={{ position: "absolute", top: 14, right: 14 }}>
+        <div style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 8, alignItems: "center" }}>
           <span className="badge cheapest">⭐ Más barato</span>
+          <button className="btn secondary" style={{ padding: "5px 9px", fontSize: 11.5 }} onClick={addToCart} aria-label="Agregar al changuito">
+            <Icon.plus /> <Icon.cart />
+          </button>
         </div>
         <div style={{ display: "flex", gap: 18 }}>
           {imageEl}
@@ -488,7 +494,7 @@ function ProductCardFull({ product, isCheapest = false }: {
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 220px", gap: 18, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 220px auto", gap: 18, alignItems: "center" }}>
         {imageEl}
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>
@@ -524,6 +530,9 @@ function ProductCardFull({ product, isCheapest = false }: {
             <div style={{ fontSize: 13, color: "var(--fg-4)" }}>Sin precio disponible</div>
           )}
         </div>
+        <button className="btn secondary" style={{ padding: "8px 10px", fontSize: 12 }} onClick={addToCart} aria-label="Agregar al changuito">
+          <Icon.plus /> <Icon.cart />
+        </button>
       </div>
     </div>
   );
