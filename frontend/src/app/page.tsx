@@ -5,20 +5,11 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { getProductCount, getEconomicContext, getProductFacets, getPriceIndex } from "@/lib/api";
+import { getProductCount, getEconomicContext, getProductFacets, getPriceIndex, getTopMovers } from "@/lib/api";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 import { CatIcon } from "@/components/design/icons";
 import { VarBadge, fmtPrice, fmtPct, Icon } from "@/components/design/components";
 import type { EconomicContext } from "@/types";
-
-const TRENDING = [
-  { q: "Aceite girasol",    change: 0.185,  dir: "up"   },
-  { q: "Leche entera",      change: -0.032, dir: "down" },
-  { q: "Yerba mate",        change: 0.074,  dir: "up"   },
-  { q: "Arroz largo",       change: 0.091,  dir: "up"   },
-  { q: "Pan lactal",        change: 0.052,  dir: "up"   },
-  { q: "Fideos spaghetti",  change: -0.018, dir: "down" },
-];
 
 // EconomicContextSchema ya coerciona los campos numéricos (ver src/types/index.ts) —
 // acá solo se normalizan los porcentajes de fracción (0.021 -> 2,1%) para fmtPct().
@@ -66,6 +57,12 @@ export default function Home() {
   const { data: priceIndex } = useQuery({
     queryKey: ["priceIndex"],
     queryFn: () => getPriceIndex(7),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: topMovers = [] } = useQuery({
+    queryKey: ["topMovers"],
+    queryFn: () => getTopMovers(7, 6),
     staleTime: 10 * 60 * 1000,
   });
 
@@ -124,7 +121,7 @@ export default function Home() {
             </div>
 
             {/* Dropdown de tendencias al enfocar vacío */}
-            {focused && !query && (
+            {focused && !query && topMovers.length > 0 && (
               <div style={{
                 position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
                 background: "var(--surface)", border: "1px solid var(--border)",
@@ -132,11 +129,11 @@ export default function Home() {
                 overflow: "hidden", zIndex: 10,
               }}>
                 <div style={{ padding: "10px 16px", fontSize: 11, color: "var(--fg-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, borderBottom: "1px solid var(--border)" }}>
-                  Tendencias
+                  Mayor variación de precio (7 días)
                 </div>
-                {TRENDING.map((t, i) => (
-                  <button key={t.q}
-                    onMouseDown={(e) => { e.preventDefault(); submit(t.q); }}
+                {topMovers.map((t, i) => (
+                  <button key={t.product_id}
+                    onMouseDown={(e) => { e.preventDefault(); submit(t.product_name); }}
                     style={{
                       display: "flex", width: "100%", alignItems: "center", gap: 12,
                       padding: "11px 16px", background: "none", border: 0, textAlign: "left",
@@ -146,9 +143,9 @@ export default function Home() {
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                   >
                     <Icon.search style={{ color: "var(--fg-3)" }} />
-                    <span style={{ flex: 1, fontSize: 14 }}>{t.q}</span>
-                    <span style={{ color: t.dir === "up" ? "var(--bad)" : "var(--good)", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600 }}>
-                      {fmtPct(t.change)}
+                    <span style={{ flex: 1, fontSize: 14 }}>{t.product_name}</span>
+                    <span style={{ color: t.change_pct >= 0 ? "var(--bad)" : "var(--good)", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600 }}>
+                      {fmtPct(t.change_pct)}
                     </span>
                   </button>
                 ))}
@@ -157,20 +154,22 @@ export default function Home() {
           </div>
 
           {/* Trending chips */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 48, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>
-              <Icon.trend style={{ verticalAlign: -2, marginRight: 4 }} />
-              Tendencias
-            </span>
-            {TRENDING.map((t) => (
-              <button key={t.q} className="chip" onClick={() => submit(t.q)}>
-                {t.q}
-                <span style={{ color: t.dir === "up" ? "var(--bad)" : "var(--good)", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600 }}>
-                  {fmtPct(t.change)}
-                </span>
-              </button>
-            ))}
-          </div>
+          {topMovers.length > 0 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 48, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>
+                <Icon.trend style={{ verticalAlign: -2, marginRight: 4 }} />
+                Mayor variación
+              </span>
+              {topMovers.map((t) => (
+                <button key={t.product_id} className="chip" onClick={() => submit(t.product_name)}>
+                  {t.product_name}
+                  <span style={{ color: t.change_pct >= 0 ? "var(--bad)" : "var(--good)", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600 }}>
+                    {fmtPct(t.change_pct)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Categories grid */}
           <div className="section-head">

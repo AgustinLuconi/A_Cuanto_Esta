@@ -9,6 +9,7 @@ import {
   Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice, fmtRelativeTime,
 } from "@/components/design/components";
 import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
+import { computeUnitPrice } from "@/lib/unitPrice";
 import type { CurrentPrice } from "@/types";
 
 export default function ProductoPage({ params }: { params: { id: string } }) {
@@ -117,6 +118,7 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
           <div className="col" style={{ gap: 8, marginBottom: 32 }}>
             {sortedPrices.map((cp: CurrentPrice, i: number) => {
               const smName = SM_BY_ID[cp.supermarket]?.name ?? cp.supermarket.replace("_", " ");
+              const unitPrice = computeUnitPrice(cp.price, product.unit, product.quantity);
               return (
                 <div key={cp.supermarket} className="card" style={{
                   padding: 14, display: "flex", alignItems: "center", gap: 14,
@@ -135,7 +137,14 @@ export default function ProductoPage({ params }: { params: { id: string } }) {
                       </span>
                     </div>
                   </div>
-                  <Price value={cp.price} size="lg" />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                    <Price value={cp.price} size="lg" />
+                    {unitPrice && (
+                      <span style={{ fontSize: 11, color: "var(--fg-4)" }}>
+                        ${fmtPrice(unitPrice.value, { decimals: 2 })} / {unitPrice.label}
+                      </span>
+                    )}
+                  </div>
                   {cp.url && (
                     <a href={cp.url} target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ fontSize: 12 }}>
                       Ver en {smName} <Icon.arrowR />

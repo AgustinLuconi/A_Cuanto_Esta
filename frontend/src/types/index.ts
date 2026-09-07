@@ -168,6 +168,13 @@ export const PriceInflationAnalysisSchema = z.object({
 });
 export type PriceInflationAnalysis = z.infer<typeof PriceInflationAnalysisSchema>;
 
+export const TopMoverSchema = z.object({
+  product_id: z.string(),
+  product_name: z.string(),
+  change_pct: z.number(),
+});
+export type TopMover = z.infer<typeof TopMoverSchema>;
+
 export const ProductCountSchema = z.object({
   count: z.number(),
 });

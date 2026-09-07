@@ -82,5 +82,11 @@ class Product(Base):
         """Nombre completo del producto"""
         parts = [self.brand, self.name]
         if self.quantity:
-            parts.append(f"({self.quantity} {self.unit.value})")
+            # `quantity` a veces ya incluye la unidad (ej. "100g", "1L") —
+            # no repetirla si el texto ya termina en ella.
+            qty = self.quantity.strip()
+            if qty.lower().endswith(self.unit.value.lower()):
+                parts.append(f"({qty})")
+            else:
+                parts.append(f"({qty} {self.unit.value})")
         return " ".join(filter(None, parts))

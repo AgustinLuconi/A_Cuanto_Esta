@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, price_index, price_vs_inflation, category_variation
+from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_changes, _compute_product_price_changes, price_index, price_vs_inflation, category_variation, top_movers
 from app.models.economic_indicator import EconomicIndicator
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
@@ -295,3 +295,94 @@ def test_category_variation_groups_and_averages_by_category():
         result = category_variation(days=30, db=db)
 
     assert result == {"lacteos": pytest.approx(0.15), "limpieza": pytest.approx(0.04)}
+
+
+# --- _compute_product_price_changes: igual a _compute_price_changes pero --
+# --- conserva product_id en vez de categoría -------------------------------
+
+
+def _prow(product_id, supermarket, price, days_ago):
+    return (product_id, supermarket, price, datetime.utcnow() - timedelta(days=days_ago))
+
+
+def test_compute_product_price_changes_excludes_pair_below_coverage_threshold():
+    pid = uuid4()
+    rows = [
+        _prow(pid, Supermarket.COTO, 100, days_ago=9),
+        _prow(pid, Supermarket.COTO, 110, days_ago=1),
+    ]
+    db = MagicMock()
+    db.query.return_value.filter.return_value.order_by.return_value.all.return_value = rows
+
+    result = _compute_product_price_changes(db, days=10)
+
+    assert result == []
+
+
+def test_compute_product_price_changes_computes_change_and_keeps_product_id():
+    pid = uuid4()
+    rows = [_prow(pid, Supermarket.COTO, 100, days_ago=9)]
+    for d in range(6, 0, -1):
+        rows.append(_prow(pid, Supermarket.COTO, 100 + (9 - d), days_ago=d))
+    rows.append(_prow(pid, Supermarket.COTO, 110, days_ago=1))
+    db = MagicMock()
+    db.query.return_value.filter.return_value.order_by.return_value.all.return_value = rows
+
+    result = _compute_product_price_changes(db, days=10)
+
+    assert len(result) == 1
+    result_pid, supermarket, change_pct = result[0]
+    assert result_pid == pid
+    assert supermarket == "coto"
+    assert change_pct == pytest.approx(0.10)
+
+
+def test_compute_product_price_changes_returns_empty_list_when_no_rows():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+
+    result = _compute_product_price_changes(db, days=7)
+
+    assert result == []
+
+
+# --- top_movers: endpoint --------------------------------------------------
+
+
+def test_top_movers_returns_empty_list_when_no_products_qualify():
+    db = MagicMock()
+    with patch("app.api.v1.endpoints.analysis._compute_product_price_changes", return_value=[]):
+        result = top_movers(days=7, limit=6, db=db)
+
+    assert result == []
+
+
+def test_top_movers_orders_by_absolute_magnitude_and_limits():
+    pid_a, pid_b, pid_c = uuid4(), uuid4(), uuid4()
+    changes = [
+        (pid_a, "coto", 0.05),
+        (pid_b, "coto", -0.30),
+        (pid_c, "coto", 0.12),
+    ]
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [
+        (pid_b, "Producto B"), (pid_c, "Producto C"),
+    ]
+    with patch("app.api.v1.endpoints.analysis._compute_product_price_changes", return_value=changes):
+        result = top_movers(days=7, limit=2, db=db)
+
+    assert [r.product_id for r in result] == [pid_b, pid_c]
+    assert result[0].change_pct == pytest.approx(-0.30)
+    assert result[0].product_name == "Producto B"
+
+
+def test_top_movers_keeps_largest_magnitude_when_product_varies_in_multiple_supermarkets():
+    pid = uuid4()
+    changes = [(pid, "coto", 0.05), (pid, "carrefour", -0.20)]
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [(pid, "Producto")]
+    with patch("app.api.v1.endpoints.analysis._compute_product_price_changes", return_value=changes):
+        result = top_movers(days=7, limit=6, db=db)
+
+    assert len(result) == 1
+    assert result[0].change_pct == pytest.approx(-0.20)

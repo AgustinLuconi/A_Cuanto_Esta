@@ -106,6 +106,87 @@ def _compute_price_changes(db: Session, days: int) -> list[tuple[float, str]]:
     return changes
 
 
+def _compute_product_price_changes(db: Session, days: int) -> list[tuple[UUID, str, float]]:
+    """
+    Igual que `_compute_price_changes` pero conserva `product_id` en vez de
+    categoría — para "top movers" (mayor variación de precio por producto),
+    no un agregado. Devuelve (product_id, supermarket, change_pct).
+    """
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    min_days = math.ceil(days * _MIN_COVERAGE_RATIO)
+
+    rows = (
+        db.query(
+            PriceHistory.product_id,
+            PriceHistory.supermarket,
+            PriceHistory.price,
+            PriceHistory.scraped_at,
+        )
+        .filter(PriceHistory.scraped_at >= cutoff)
+        .order_by(PriceHistory.product_id, PriceHistory.supermarket, PriceHistory.scraped_at.asc())
+        .all()
+    )
+
+    by_pair: dict[tuple[UUID, str], list[tuple[datetime, float]]] = defaultdict(list)
+    for product_id, supermarket, price, scraped_at in rows:
+        by_pair[(product_id, supermarket.value)].append((scraped_at, float(price)))
+
+    changes: list[tuple[UUID, str, float]] = []
+    for (product_id, supermarket), points in by_pair.items():
+        distinct_days = {ts.date() for ts, _ in points}
+        if len(distinct_days) < min_days:
+            continue
+        first_price = points[0][1]
+        last_price = points[-1][1]
+        if first_price == 0:
+            continue
+        changes.append((product_id, supermarket, (last_price - first_price) / first_price))
+
+    return changes
+
+
+class TopMover(BaseModel):
+    product_id: UUID
+    product_name: str
+    change_pct: float
+
+
+@router.get("/top-movers", response_model=list[TopMover])
+def top_movers(
+    days: int = Query(7, ge=1, le=365, description="Ventana en días"),
+    limit: int = Query(6, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """
+    Productos con mayor variación de precio (en valor absoluto) en la
+    ventana, con historial continuo suficiente. Reemplaza el TRENDING
+    hardcodeado del home. Si un producto varió en más de un supermercado,
+    se usa la variación de mayor magnitud.
+    """
+    changes = _compute_product_price_changes(db, days)
+    if not changes:
+        return []
+
+    best_per_product: dict[UUID, float] = {}
+    for product_id, _supermarket, change in changes:
+        current = best_per_product.get(product_id)
+        if current is None or abs(change) > abs(current):
+            best_per_product[product_id] = change
+
+    top_ids = sorted(best_per_product, key=lambda pid: abs(best_per_product[pid]), reverse=True)[:limit]
+    if not top_ids:
+        return []
+
+    products = db.query(Product.id, Product.name).filter(Product.id.in_(top_ids)).all()
+    name_by_id = {pid: name for pid, name in products}
+
+    return [
+        TopMover(product_id=pid, product_name=name_by_id.get(pid, ""), change_pct=round(best_per_product[pid], 4))
+        for pid in top_ids
+        if pid in name_by_id
+    ]
+
+
 class PriceIndexResponse(BaseModel):
     avg_change_pct: float | None
     basket_size: int

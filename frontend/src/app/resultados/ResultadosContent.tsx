@@ -8,7 +8,8 @@ import { searchProducts, getProductsList, getProductFacets } from "@/lib/api";
 import type { SortOrder } from "@/lib/api";
 import type { ProductCategory, ProductList, ProductWithPrices } from "@/types";
 import { CATEGORIES_DESIGN, DESIGN_TO_BACKEND, SUPERMARKETS_DESIGN as SUPERMARKETS_LIST } from "@/lib/categoryMap";
-import { Price, SMSwatch, ImagePlaceholder, Icon } from "@/components/design/components";
+import { Price, SMSwatch, ImagePlaceholder, Icon, fmtPrice } from "@/components/design/components";
+import { computeUnitPrice } from "@/lib/unitPrice";
 
 export default function ResultadosContent() {
   const searchParams = useSearchParams();
@@ -432,6 +433,7 @@ function ProductCardFull({ product, isCheapest = false }: {
   const lowestPrice = product.lowest_price ?? null;
   const cheapestSm = product.current_prices.reduce((best, cp) =>
     (!best || cp.price < best.price) ? cp : best, null as ProductWithPrices["current_prices"][0] | null);
+  const unitPrice = lowestPrice != null ? computeUnitPrice(lowestPrice, product.unit, product.quantity) : null;
 
   const imageEl = product.image_url
     ? <img src={product.image_url} alt={product.name} style={{ width: isCheapest ? 110 : 80, height: isCheapest ? 110 : 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", flexShrink: 0 }} />
@@ -459,6 +461,11 @@ function ProductCardFull({ product, isCheapest = false }: {
             <h2 style={{ fontSize: 20, marginBottom: 8 }}>{product.full_name}</h2>
             <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 10 }}>
               {lowestPrice != null && <Price value={lowestPrice} size="lg" />}
+              {unitPrice && (
+                <span style={{ fontSize: 12, color: "var(--fg-3)" }}>
+                  (${fmtPrice(unitPrice.value, { decimals: 2 })} / {unitPrice.label})
+                </span>
+              )}
             </div>
             {cheapestSm && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--fg-2)" }}>
@@ -500,6 +507,11 @@ function ProductCardFull({ product, isCheapest = false }: {
             <>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                 <Price value={lowestPrice} size="lg" />
+                {unitPrice && (
+                  <span style={{ fontSize: 11.5, color: "var(--fg-3)" }}>
+                    (${fmtPrice(unitPrice.value, { decimals: 2 })} / {unitPrice.label})
+                  </span>
+                )}
               </div>
               {cheapestSm && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--fg-2)" }}>

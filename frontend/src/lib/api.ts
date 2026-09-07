@@ -10,6 +10,7 @@ import {
   ProductCountSchema,
   ProductListSchema,
   ProductWithPricesSchema,
+  TopMoverSchema,
   type EconomicContext,
   type PriceHistoryRecord,
   type PriceIndex,
@@ -19,6 +20,7 @@ import {
   type ProductList,
   type ProductWithPrices,
   type Supermarket,
+  type TopMover,
 } from "@/types";
 
 const api = axios.create({
@@ -191,4 +193,9 @@ export async function getPriceVsInflation(
     }
     throw err;
   }
+}
+
+export async function getTopMovers(days = 7, limit = 6): Promise<TopMover[]> {
+  const { data } = await api.get("/analysis/top-movers", { params: { days, limit } });
+  return z.array(TopMoverSchema).parse(data);
 }
