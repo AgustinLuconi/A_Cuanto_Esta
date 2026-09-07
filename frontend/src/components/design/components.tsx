@@ -201,6 +201,26 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
   const xAt = (i: number) => pad.l + (i / (Math.max(1, labels.length - 1))) * innerW;
   const yAt = (v: number) => pad.t + (1 - (v - minP) / ((maxP - minP) || 1)) * innerH;
 
+  // Mínimo y máximo histórico entre todas las series visibles (cualquier
+  // supermercado), para marcarlos en el gráfico — "el precio más bajo/alto
+  // que tuvo este producto en el período", no por serie individual.
+  const allPoints: { i: number; v: number }[] = smIds.flatMap(
+    k => (series[k] ?? []).map((v, i) => ({ i, v }))
+  );
+  const minPoint = allPoints.reduce<{ i: number; v: number } | null>(
+    (acc, p) => (!acc || p.v < acc.v ? p : acc), null
+  );
+  const maxPoint = allPoints.reduce<{ i: number; v: number } | null>(
+    (acc, p) => (!acc || p.v > acc.v ? p : acc), null
+  );
+  const showMinMax = minPoint !== null && maxPoint !== null && minPoint.v !== maxPoint.v;
+  // Evita que las etiquetas de mín/máx se corten contra los bordes del gráfico.
+  const labelAnchor = (x: number): "start" | "middle" | "end" => {
+    if (x < pad.l + innerW * 0.12) return "start";
+    if (x > pad.l + innerW * 0.88) return "end";
+    return "middle";
+  };
+
   const ticks = 5;
   const yTicks = Array.from({length: ticks}, (_, i) => minP + (maxP - minP) * (i/(ticks-1)));
   const xStep = Math.max(1, Math.floor(labels.length / 6));
@@ -250,6 +270,24 @@ export function MultiLineChart({ labels, series, inflation, height = 360, showIn
               strokeLinecap="round" strokeLinejoin="round" />
           );
         })}
+        {showMinMax && minPoint && (
+          <g>
+            <circle cx={xAt(minPoint.i)} cy={yAt(minPoint.v)} r="4" fill="var(--good)" stroke="white" strokeWidth="1.5" />
+            <text x={xAt(minPoint.i)} y={yAt(minPoint.v) + 16} textAnchor={labelAnchor(xAt(minPoint.i))}
+              fill="var(--good)" fontSize="10" fontWeight={700} fontFamily="var(--font-mono)">
+              Mín ${fmtPrice(minPoint.v)}
+            </text>
+          </g>
+        )}
+        {showMinMax && maxPoint && (
+          <g>
+            <circle cx={xAt(maxPoint.i)} cy={yAt(maxPoint.v)} r="4" fill="var(--bad)" stroke="white" strokeWidth="1.5" />
+            <text x={xAt(maxPoint.i)} y={yAt(maxPoint.v) - 10} textAnchor={labelAnchor(xAt(maxPoint.i))}
+              fill="var(--bad)" fontSize="10" fontWeight={700} fontFamily="var(--font-mono)">
+              Máx ${fmtPrice(maxPoint.v)}
+            </text>
+          </g>
+        )}
         {hover && (
           <g>
             <line x1={hover.x} x2={hover.x} y1={pad.t} y2={h - pad.b} stroke="var(--fg-2)" strokeDasharray="2 3" opacity="0.3"/>
