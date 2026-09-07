@@ -83,6 +83,16 @@ def test_count_products():
     assert isinstance(data["count"], int)
 
 
+def test_get_product_sitemap_ids():
+    response = client.get("/api/v1/products/sitemap-ids")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "id" in data[0] and "updated_at" in data[0]
+    uuid.UUID(data[0]["id"])  # no lanza si es un UUID válido
+
+
 def test_get_product_detail_404_for_non_existent():
     random_id = str(uuid.uuid4())
     response = client.get(f"/api/v1/products/{random_id}")

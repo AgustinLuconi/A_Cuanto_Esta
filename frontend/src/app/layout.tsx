@@ -5,11 +5,33 @@ import "@/components/design/styles.css";
 import QueryProvider from "@/components/layout/QueryProvider";
 import Header from "@/components/layout/Header";
 import { ThemeProvider } from "@/lib/themeContext";
+import { env } from "@/lib/env";
+
+const SITE_TITLE = "¿A Cuánto Está? — Comparador de precios en supermercados argentinos";
+const SITE_DESCRIPTION =
+  "Comparamos precios de miles de productos en 9 supermercados argentinos con contexto económico en tiempo real (inflación, dólar).";
 
 export const metadata: Metadata = {
-  title: "¿A Cuánto Está? — Comparador de precios en supermercados argentinos",
-  description:
-    "Comparamos precios de más de 3.000 productos en 9 supermercados argentinos con contexto económico en tiempo real.",
+  metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
+  title: { default: SITE_TITLE, template: "%s | ¿A Cuánto Está?" },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "comparador de precios", "supermercados argentina", "precios supermercados",
+    "inflación argentina", "coto", "carrefour", "jumbo", "dia", "vea", "disco",
+  ],
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    type: "website",
+    locale: "es_AR",
+    siteName: "¿A Cuánto Está?",
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 const THEME_BOOT_SCRIPT = `

@@ -466,6 +466,17 @@ def count_products(
     return {"count": query.scalar()}
 
 
+@router.get("/sitemap-ids")
+def get_product_sitemap_ids(db: Session = Depends(get_db)) -> list[dict]:
+    """
+    Lista liviana de {id, updated_at} para TODOS los productos — usada por el
+    sitemap del frontend. Evita paginar /products (que trae precios) solo
+    para juntar IDs.
+    """
+    rows = db.query(Product.id, Product.updated_at).all()
+    return [{"id": str(pid), "updated_at": updated_at.isoformat()} for pid, updated_at in rows]
+
+
 @router.get("/facets")
 def get_product_facets(
     q: str | None = Query(None, min_length=1),

@@ -202,6 +202,11 @@ export async function getTopMovers(days = 7, limit = 6): Promise<TopMover[]> {
   return z.array(TopMoverSchema).parse(data);
 }
 
+export async function getProductSitemapIds(): Promise<{ id: string; updated_at: string }[]> {
+  const { data } = await api.get("/products/sitemap-ids");
+  return z.array(z.object({ id: z.string(), updated_at: z.string() })).parse(data);
+}
+
 export async function getDiscountCheck(
   productId: string,
   supermarket: Supermarket

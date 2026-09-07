@@ -1,0 +1,218 @@
+"use client";
+
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { getProduct, getPriceHistory, getInflationHistory, getPriceVsInflation, getDiscountCheck } from "@/lib/api";
+import { buildPriceChartData, buildInflationFactors } from "@/lib/priceHistoryChart";
+import {
+  Price, SMSwatch, SM_BY_ID, ImagePlaceholder, Icon, MultiLineChart, fmtPrice, fmtRelativeTime,
+} from "@/components/design/components";
+import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
+import { computeUnitPrice } from "@/lib/unitPrice";
+import type { CurrentPrice } from "@/types";
+import type { Supermarket } from "@/types";
+
+export default function ProductDetailClient({ id }: { id: string }) {
+  const { data: product, isLoading, isError, error } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => getProduct(id),
+  });
+
+  const { data: priceHistory = [], isLoading: isLoadingHistory } = useQuery({
+    queryKey: ["priceHistory", id],
+    queryFn: () => getPriceHistory(id, 90),
+  });
+
+  const { data: inflationRaw = [] } = useQuery({
+    queryKey: ["inflation6m"],
+    queryFn: () => getInflationHistory(6, "monthly"),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const cheapestSupermarket = product
+    ? [...product.current_prices].sort((a, b) => a.price - b.price)[0]?.supermarket
+    : undefined;
+
+  const { data: priceVsInflation } = useQuery({
+    queryKey: ["priceVsInflation", id, cheapestSupermarket],
+    queryFn: () => getPriceVsInflation(id, cheapestSupermarket!, 30),
+    enabled: !!cheapestSupermarket,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="page" style={{ textAlign: "center", padding: "64px 0", color: "var(--fg-4)" }}>
+        Cargando producto…
+      </div>
+    );
+  }
+
+  if (isError || !product) {
+    const isNotFound = axios.isAxiosError(error) && error.response?.status === 404;
+    return (
+      <div className="page" style={{ textAlign: "center", padding: "64px 0" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{isNotFound ? "🔍" : "⚠️"}</div>
+        <p style={{ color: "var(--fg-3)", marginBottom: 12 }}>
+          {isNotFound ? "Producto no encontrado" : "No pudimos cargar este producto. Intentá de nuevo."}
+        </p>
+        <Link href="/resultados" style={{ fontSize: 13, color: "var(--primary)" }}>
+          ← Volver a resultados
+        </Link>
+      </div>
+    );
+  }
+
+  const sortedPrices = [...product.current_prices].sort((a, b) => a.price - b.price);
+  const categoryLabel = CATEGORIES_DESIGN.find(
+    (c) => c.id === BACKEND_TO_DESIGN[product.category]
+  )?.name;
+  const { labels, series } = priceHistory.length > 0 ? buildPriceChartData(priceHistory) : { labels: [], series: {} };
+  // Con un único día de historial, MultiLineChart no puede trazar una línea (división por
+  // labels.length - 1 en su escala X produce NaN). Se exige al menos 2 días distintos antes
+  // de intentar renderizar el gráfico; si no, se muestra el mismo estado vacío que para
+  // "sin historial en absoluto".
+  const hasChart = labels.length >= 2;
+  const inflation = hasChart ? buildInflationFactors(labels, inflationRaw) : [];
+
+  return (
+    <div className="page">
+      <div style={{ marginBottom: 20 }}>
+        <Link href="/resultados" style={{ fontSize: 12, color: "var(--fg-3)" }}>← Volver a resultados</Link>
+      </div>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", gap: 24, marginBottom: 28 }}>
+        {product.image_url
+          ? <img src={product.image_url} alt={product.name} style={{ width: 140, height: 140, objectFit: "contain", borderRadius: 12, border: "1px solid var(--border)", flexShrink: 0 }} />
+          : <ImagePlaceholder w={140} h={140} label={product.brand ?? product.name} />}
+        <div>
+          <div style={{ fontSize: 12, color: "var(--fg-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+            {product.brand}
+            {categoryLabel && <> · {categoryLabel}</>}
+          </div>
+          <h1 style={{ fontSize: 26, marginBottom: 8 }}>{product.full_name}</h1>
+          {product.barcode && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--fg-3)" }}>
+              <Icon.barcode />
+              <span className="mono">{product.barcode}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* DIFERENCIA DE PRECIO */}
+      {product.price_difference != null && product.price_difference > 0 && (
+        <div className="card" style={{ padding: 16, marginBottom: 24, background: "var(--good-tint)", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24 }}>💡</span>
+          <div>
+            <strong>Podés ahorrar {fmtPrice(product.price_difference)}</strong>
+            <span style={{ color: "var(--fg-3)" }}> eligiendo bien el supermercado</span>
+          </div>
+        </div>
+      )}
+
+      {/* PRECIOS POR SUPERMERCADO */}
+      {sortedPrices.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 16, marginBottom: 12 }}>Precios por supermercado</h2>
+          <div className="col" style={{ gap: 8, marginBottom: 32 }}>
+            {sortedPrices.map((cp: CurrentPrice, i: number) => {
+              const smName = SM_BY_ID[cp.supermarket]?.name ?? cp.supermarket.replace("_", " ");
+              const unitPrice = computeUnitPrice(cp.price, product.unit, product.quantity);
+              return (
+                <div key={cp.supermarket} className="card" style={{
+                  padding: 14, display: "flex", alignItems: "center", gap: 14,
+                  borderColor: i === 0 ? "var(--good)" : undefined,
+                }}>
+                  <SMSwatch sm={cp.supermarket} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{smName}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap", alignItems: "center" }}>
+                      {i === 0 && <span className="badge cheapest" style={{ fontSize: 10.5 }}>⭐ Más barato</span>}
+                      {cp.was_on_sale && <span className="badge" style={{ fontSize: 10.5 }}>En oferta</span>}
+                      {cp.was_on_sale && <DiscountBadge productId={id} supermarket={cp.supermarket} />}
+                      {!cp.in_stock && <span className="badge" style={{ fontSize: 10.5, color: "var(--fg-4)" }}>Sin stock</span>}
+                      {cp.is_stale && <span className="badge" style={{ fontSize: 10.5, color: "var(--warn)" }}>Precio desactualizado</span>}
+                      <span style={{ fontSize: 11, color: "var(--fg-4)" }}>
+                        actualizado {fmtRelativeTime(cp.last_updated)}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                    <Price value={cp.price} size="lg" />
+                    {unitPrice && (
+                      <span style={{ fontSize: 11, color: "var(--fg-4)" }}>
+                        ${fmtPrice(unitPrice.value, { decimals: 2 })} / {unitPrice.label}
+                      </span>
+                    )}
+                  </div>
+                  {cp.url && (
+                    <a href={cp.url} target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ fontSize: 12 }}>
+                      Ver en {smName} <Icon.arrowR />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* PRECIO VS. INFLACIÓN */}
+      {priceVsInflation && (
+        <div className="card" style={{ padding: 16, marginBottom: 22, display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>
+            {priceVsInflation.comparison === "above" ? "📈" : priceVsInflation.comparison === "below" ? "📉" : "➖"}
+          </span>
+          <div>
+            <div style={{ fontSize: 13.5 }}>{priceVsInflation.analysis_text}</div>
+            <div style={{ fontSize: 11.5, color: "var(--fg-4)", marginTop: 3 }}>
+              {SM_BY_ID[priceVsInflation.supermarket]?.name ?? priceVsInflation.supermarket} · últimos {priceVsInflation.period_days} días ·
+              {" "}precio {priceVsInflation.price_change_percent > 0 ? "+" : ""}{priceVsInflation.price_change_percent.toFixed(1).replace(".", ",")}%
+              {" "}vs. inflación {priceVsInflation.inflation_period_percent.toFixed(1).replace(".", ",")}%
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GRÁFICO HISTÓRICO */}
+      <h2 style={{ fontSize: 16, marginBottom: 12 }}>Historial de precios</h2>
+      <div className="card" style={{ padding: 22 }}>
+        {isLoadingHistory ? (
+          <p style={{ color: "var(--fg-4)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>
+            Cargando historial…
+          </p>
+        ) : hasChart ? (
+          <MultiLineChart labels={labels} series={series} inflation={inflation} height={320} />
+        ) : (
+          <p style={{ color: "var(--fg-4)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>
+            Todavía no hay suficiente historial para este producto.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Verifica si el "antes" de una oferta es real comparándolo contra el
+// historial reciente — solo se pide cuando el precio está marcado en oferta.
+function DiscountBadge({ productId, supermarket }: { productId: string; supermarket: Supermarket }) {
+  const { data: check } = useQuery({
+    queryKey: ["discountCheck", productId, supermarket],
+    queryFn: () => getDiscountCheck(productId, supermarket),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  if (!check || !check.is_suspicious) return null;
+
+  return (
+    <span
+      className="badge"
+      title={check.reason}
+      style={{ fontSize: 10.5, color: "var(--bad)", cursor: "help" }}
+    >
+      ⚠ Descuento a verificar
+    </span>
+  );
+}
