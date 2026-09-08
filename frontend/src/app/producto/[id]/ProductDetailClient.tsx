@@ -11,11 +11,16 @@ import {
 import { CATEGORIES_DESIGN, BACKEND_TO_DESIGN } from "@/lib/categoryMap";
 import { computeUnitPrice } from "@/lib/unitPrice";
 import { useShoppingList } from "@/lib/shoppingListContext";
+import { usePriceAlerts } from "@/lib/priceAlertsContext";
 import type { CurrentPrice } from "@/types";
 import type { Supermarket } from "@/types";
+import { useState } from "react";
 
 export default function ProductDetailClient({ id }: { id: string }) {
   const { add, has } = useShoppingList();
+  const { alerts, addAlert, removeAlert, hasAlert } = usePriceAlerts();
+  const [alertFormOpen, setAlertFormOpen] = useState(false);
+  const [targetPriceInput, setTargetPriceInput] = useState("");
 
   const { data: product, isLoading, isError, error } = useQuery({
     queryKey: ["product", id],
@@ -98,13 +103,47 @@ export default function ProductDetailClient({ id }: { id: string }) {
               </div>
               <h1 style={{ fontSize: 26, marginBottom: 8 }}>{product.full_name}</h1>
             </div>
-            <button
-              className={has(product.id) ? "btn secondary" : "btn"}
-              style={{ fontSize: 12.5, flexShrink: 0 }}
-              onClick={() => add(product.id)}
-            >
-              <Icon.cart /> {has(product.id) ? "Agregar otra vez" : "Agregar al changuito"}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              <button
+                className={has(product.id) ? "btn secondary" : "btn"}
+                style={{ fontSize: 12.5 }}
+                onClick={() => add(product.id)}
+              >
+                <Icon.cart /> {has(product.id) ? "Agregar otra vez" : "Agregar al changuito"}
+              </button>
+              {hasAlert(product.id) ? (
+                <button className="btn secondary" style={{ fontSize: 12.5, color: "var(--good)" }}
+                  onClick={() => removeAlert(product.id)}>
+                  <Icon.bell /> Alerta a ${fmtPrice(alerts.find((a) => a.productId === product.id)?.targetPrice ?? 0)} · quitar
+                </button>
+              ) : alertFormOpen ? (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 12 }}>Avisarme si baja de $</span>
+                  <input
+                    type="number"
+                    autoFocus
+                    value={targetPriceInput}
+                    onChange={(e) => setTargetPriceInput(e.target.value)}
+                    style={{ width: 80, padding: "4px 6px", fontSize: 12, border: "1px solid var(--border)", borderRadius: 6 }}
+                  />
+                  <button className="btn" style={{ fontSize: 11.5, padding: "5px 9px" }}
+                    onClick={() => {
+                      const val = parseFloat(targetPriceInput);
+                      if (val > 0) { addAlert(product.id, val); setAlertFormOpen(false); }
+                    }}>
+                    Guardar
+                  </button>
+                </div>
+              ) : (
+                <button className="btn secondary" style={{ fontSize: 12.5 }}
+                  onClick={() => {
+                    setTargetPriceInput(sortedPrices[0] ? String(Math.round(sortedPrices[0].price)) : "");
+                    setAlertFormOpen(true);
+                  }}>
+                  <Icon.bell /> Avisarme si baja
+                </button>
+              )}
+            </div>
           </div>
           {product.barcode && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--fg-3)" }}>

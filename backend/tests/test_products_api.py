@@ -101,6 +101,12 @@ def test_get_products_bulk_requires_at_least_one_id():
     assert response.status_code == 422
 
 
+def test_get_products_bulk_rejects_more_than_100_ids():
+    ids = [str(uuid.uuid4()) for _ in range(101)]
+    response = client.get("/api/v1/products/bulk", params={"ids": ids})
+    assert response.status_code == 422
+
+
 def test_get_product_sitemap_ids():
     response = client.get("/api/v1/products/sitemap-ids")
     assert response.status_code == 200

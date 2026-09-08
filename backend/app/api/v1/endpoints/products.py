@@ -468,7 +468,7 @@ def count_products(
 
 @router.get("/bulk", response_model=list[product_schemas.ProductWithPrices])
 def get_products_bulk(
-    ids: list[UUID] = Query(..., description="IDs de producto a traer"),
+    ids: list[UUID] = Query(..., min_length=1, max_length=100, description="IDs de producto a traer (máximo 100)"),
     db: Session = Depends(get_db),
 ) -> list[product_schemas.ProductWithPrices]:
     """
@@ -476,6 +476,8 @@ def get_products_bulk(
     en el mismo orden en que aparecen los productos encontrados — usado por
     el changuito para no hacer un GET /products/{id} por ítem de la lista.
     IDs inexistentes se omiten en silencio en vez de fallar toda la respuesta.
+    Tope de 100 IDs por request para no permitir un IN (...) arbitrariamente
+    grande desde un cliente sin autenticar.
     """
     products = db.query(Product).filter(Product.id.in_(ids)).all()
     return _build_products_with_prices(db, products)

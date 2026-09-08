@@ -7,6 +7,7 @@ import { Logo } from "@/components/design/icons";
 import { Icon } from "@/components/design/components";
 import { useTheme } from "@/lib/themeContext";
 import { useShoppingList } from "@/lib/shoppingListContext";
+import { usePriceAlerts } from "@/lib/priceAlertsContext";
 import { SUPERMARKETS_DESIGN } from "@/lib/categoryMap";
 
 // Tab icons — SVGs inline desde app.jsx del diseño de referencia
@@ -57,6 +58,7 @@ export default function Header() {
   const { theme, toggleTheme }         = useTheme();
   const { items: cartItems }           = useShoppingList();
   const itemCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
+  const { alerts }                     = usePriceAlerts();
   const [smOpen, setSmOpen]            = useState(false);
 
   const isActive = (href: string) => {
@@ -124,6 +126,19 @@ export default function Header() {
               fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               {itemCount}
+            </span>
+          )}
+        </Link>
+        <Link href="/alertas" className="tb-pill" style={{ position: "relative", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+          <Icon.bell />
+          {alerts.length > 0 && (
+            <span style={{
+              position: "absolute", top: -5, right: -5,
+              background: "var(--primary)", color: "white",
+              borderRadius: "50%", minWidth: 16, height: 16, padding: "0 3px",
+              fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {alerts.length}
             </span>
           )}
         </Link>
