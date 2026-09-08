@@ -3,11 +3,11 @@ Modelo de base de datos para Indicadores Económicos
 """
 from sqlalchemy import Column, String, Numeric, DateTime, Date, Enum as SQLEnum, Index
 from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime, date
 import uuid
 import enum
 
 from app.config.database import Base
+from app.utils.time import utcnow_naive
 
 
 class IndicatorType(str, enum.Enum):
@@ -62,8 +62,8 @@ class EconomicIndicator(Base):
     source = Column(SQLEnum(DataSource), nullable=False)
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     
     # Información adicional en JSON (opcional)
     metadata_json = Column(String(1000))  # Para datos extra como notas, etc.

@@ -4,11 +4,12 @@ Modelo de base de datos para Historial de Precios
 from sqlalchemy import Column, String, Numeric, Boolean, DateTime, ForeignKey, Index, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta
+from datetime import timedelta
 import uuid
 import enum
 
 from app.config.database import Base
+from app.utils.time import utcnow_naive
 
 # Umbral a partir del cual un precio se considera desactualizado (scraping diario
 # corre una vez por día; 72hs da margen para un scrape fallido sin marcar todo como stale)
@@ -52,13 +53,13 @@ class PriceHistory(Base):
     
     # Información del scraping
     url = Column(String(500))  # URL del producto en el sitio
-    scraped_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    scraped_at = Column(DateTime, default=utcnow_naive, nullable=False, index=True)
     
     # Disponibilidad
     in_stock = Column(Boolean, default=True)
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
     
     # Relaciones
     product = relationship("Product", back_populates="price_history")
@@ -87,4 +88,4 @@ class PriceHistory(Base):
     @property
     def is_stale(self) -> bool:
         """True si este precio no se actualizó en las últimas STALE_THRESHOLD_HOURS horas."""
-        return datetime.utcnow() - self.scraped_at > timedelta(hours=STALE_THRESHOLD_HOURS)
+        return utcnow_naive() - self.scraped_at > timedelta(hours=STALE_THRESHOLD_HOURS)

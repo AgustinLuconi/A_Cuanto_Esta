@@ -4,11 +4,11 @@ Modelo de base de datos para Productos
 from sqlalchemy import Column, String, DateTime, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
 import uuid
 import enum
 
 from app.config.database import Base
+from app.utils.time import utcnow_naive
 
 
 class ProductCategory(str, enum.Enum):
@@ -68,8 +68,8 @@ class Product(Base):
     barcode = Column(String(50), unique=True, index=True)  # EAN/UPC si está disponible
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     
     # Relaciones
     price_history = relationship("PriceHistory", back_populates="product", cascade="all, delete-orphan")
