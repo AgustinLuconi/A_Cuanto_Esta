@@ -9,7 +9,13 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.product_matcher import find_matching_product, _quantity_conflict, _variant_word_conflict
+from app.services.product_matcher import (
+    find_matching_product,
+    _quantity_conflict,
+    _variant_word_conflict,
+    find_strict_match_candidates,
+    _significant_tokens,
+)
 
 
 def _make_candidate(normalized_name, brand=None, quantity=None):
@@ -150,3 +156,121 @@ def test_selects_highest_scoring_candidate_among_multiple():
 
     assert product is high_candidate
     assert confidence == 0.95
+
+
+# --- find_strict_match_candidates: matcher estructural para backfills ----
+
+
+def _make_product(name, normalized_name, brand=None, category="OTROS", id_="p1"):
+    return SimpleNamespace(id=id_, name=name, normalized_name=normalized_name, brand=brand, category=category)
+
+
+def _db_returning(candidates):
+    db = MagicMock()
+    db.query.return_value.filter.return_value.limit.return_value.all.return_value = candidates
+    return db
+
+
+def test_significant_tokens_strips_brand_numbers_and_packaging_words():
+    tokens = _significant_tokens("detergente magistral ultra limon botella 750ml", "magistral")
+    assert tokens == {"detergente", "ultra", "limon"}
+
+
+def test_significant_tokens_tokenizes_number_letter_and_spaced_forms_the_same():
+    a = _significant_tokens("lavandina ayudin floral 700ml", "ayudin")
+    b = _significant_tokens("lavandina ayudin floral 700 ml", "ayudin")
+    assert a == b == {"lavandina", "floral"}
+
+
+def test_significant_tokens_keeps_negation_words():
+    # "sin"/"con"/"no" no son stopwords: invierten el significado del producto.
+    sin = _significant_tokens("yogur sin azucar", None)
+    con = _significant_tokens("yogur con azucar", None)
+    assert "sin" in sin and "con" in con
+    assert sin != con
+
+
+def test_find_strict_match_candidates_matches_when_tokens_identical():
+    product = _make_product("Detergente MAGISTRAL Ultra Limón 750ml", "detergente magistral ultra limon 750ml", brand="MAGISTRAL")
+    candidate = _make_product("Detergente Magistral Ultra Limón 750 ml.", "detergente magistral ultra limon 750 ml", brand="Magistral", id_="p2")
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == [candidate]
+
+
+def test_find_strict_match_candidates_rejects_brand_mismatch():
+    product = _make_product("Gaseosa Cola COTO 1.5L", "gaseosa cola coto 1.5l", brand="COTO")
+    candidate = _make_product("Gaseosa Cola PEPSI 1.5L", "gaseosa cola pepsi 1.5l", brand="PEPSI", id_="p2")
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == []
+
+
+def test_find_strict_match_candidates_rejects_quantity_conflict():
+    product = _make_product("Aceite COCINERO 1.5L", "aceite cocinero 1.5l", brand="COCINERO")
+    candidate = _make_product("Aceite Cocinero 900ml", "aceite cocinero 900ml", brand="COCINERO", id_="p2")
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == []
+
+
+def test_find_strict_match_candidates_rejects_when_extra_distinguishing_token():
+    # "Triple Beneficio" vs "Triple Acción" -- líneas de producto distintas,
+    # el token extra en cada lado ("beneficio" / "accion") rompe la igualdad exacta.
+    product = _make_product(
+        "Pasta Dental COLGATE Triple Beneficio 180g", "pasta dental colgate triple beneficio 180g", brand="COLGATE"
+    )
+    candidate = _make_product(
+        "Pasta Dental Colgate Triple Acción 180g", "pasta dental colgate triple accion 180g", brand="Colgate", id_="p2"
+    )
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == []
+
+
+def test_find_strict_match_candidates_passes_through_when_brand_missing_on_one_side():
+    # Sin marca de un lado, no se puede comparar por marca -- pero si los
+    # tokens significativos coinciden igual, es un match válido (la marca ya
+    # suele estar repetida dentro del nombre).
+    product = _make_product("Manteca COTAMPO 200g", "manteca cotampo 200g", brand="COTAMPO")
+    candidate = _make_product("Manteca Cotampo 200 G", "manteca cotampo 200 g", brand=None, id_="p2")
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == [candidate]
+
+
+def test_find_strict_match_candidates_rejects_when_product_itself_has_no_brand():
+    # Caso real encontrado en el backfill de Coto: "Leche Reducida en Lactosa
+    # Sachet 1l" sin marca declarada -- no hay forma de confirmar que el
+    # candidato (que sí declara marca) sea el mismo fabricante, así que no
+    # se intenta ni matchear (aunque el candidato exista y sea plausible).
+    product = _make_product("Leche Reducida En Lactosa Sachet 1l", "leche reducida en lactosa sachet 1l", brand=None)
+    candidate = _make_product(
+        "Leche Reducida en Lactosa Sachet La Serenisima x 1 Lt.",
+        "leche reducida en lactosa sachet la serenisima x 1 lt", brand="LA SERENISIMA", id_="p2",
+    )
+    db = _db_returning([candidate])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == []
+    db.query.assert_not_called()
+
+
+def test_find_strict_match_candidates_returns_empty_list_when_no_candidates():
+    product = _make_product("Producto Único", "producto unico")
+    db = _db_returning([])
+
+    result = find_strict_match_candidates(product, db)
+
+    assert result == []

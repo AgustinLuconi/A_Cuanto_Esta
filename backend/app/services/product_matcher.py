@@ -127,3 +127,117 @@ def find_matching_product(
         return best_product, best_score / 100.0
 
     return None, 0.0
+
+
+# ============================================================================
+# Matcher estricto por atributos estructurados — para fusiones en batch
+# (backfills), no para el scraping en vivo de find_matching_product.
+#
+# Se diseñó después de que el fuzzy-score original (arriba) fusionara ~50%
+# de pares incorrectos en una prueba real contra el catálogo de Coto (marcas
+# distintas, "Zero" vs "Original", "Adultos" vs "Gatitos"). En vez de subir
+# el umbral de un score de similitud de caracteres, compara tres señales
+# estructurales por separado y exige que las tres coincidan — no una más:
+#   1. Categoría igual.
+#   2. Marca idéntica (normalizada), cuando ambos productos la tienen.
+#   3. El conjunto de "tokens significativos" (nombre normalizado menos
+#      marca, menos números, menos palabras de empaque sin valor
+#      discriminante) debe ser IDÉNTICO entre ambos — no una similitud
+#      aproximada. Validado contra una muestra real: con esta exigencia
+#      (jaccard == 1.0) la tasa de falsos positivos observada fue 0/19 en
+#      una muestra manual; bajar la exigencia a partir de ahí (0.6–0.8)
+#      dejó pasar pares reales de productos distintos ("Pasta Dental
+#      Colgate Triple Beneficio" vs "...Triple Acción").
+#
+# "con"/"sin"/"no" se excluyen a propósito de las palabras de empaque: son
+# negaciones reales ("sin azúcar" vs "con azúcar" son productos opuestos).
+# ============================================================================
+
+_PACKAGING_STOPWORDS = {
+    "x", "un", "de", "la", "el", "los", "las", "y", "en", "del",
+    "bot", "botella", "pack", "caja", "bolsa", "sobre", "lata", "frasco", "sachet",
+    "ml", "mls", "lt", "ltr", "ltrs", "kg", "kgs", "grs", "gr", "g", "l", "cc",
+    "u", "uni", "unid", "unidad", "unidades", "cja", "doy", "pouch", "tapa", "rosca",
+}
+
+_NUMBER_LETTER_RE = re.compile(r"(\d)([a-z])")
+_LETTER_NUMBER_RE = re.compile(r"([a-z])(\d)")
+
+
+def _split_number_unit(text: str) -> str:
+    """'750ml' y '750 ml' deben tokenizar igual — separa dígito pegado a letra."""
+    text = _NUMBER_LETTER_RE.sub(r"\1 \2", text)
+    text = _LETTER_NUMBER_RE.sub(r"\1 \2", text)
+    return text
+
+
+def _significant_tokens(name_norm: str, brand_norm: str | None) -> set[str]:
+    """Tokens del nombre que aportan identidad del producto: sin marca, sin
+    números (se comparan aparte), sin relleno de empaque sin valor discriminante."""
+    tokens = set(_split_number_unit(name_norm).split())
+    if brand_norm:
+        tokens -= set(brand_norm.split())
+    tokens -= _PACKAGING_STOPWORDS
+    return {t for t in tokens if not _NUMERIC_TOKEN_RE.fullmatch(t)}
+
+
+def find_strict_match_candidates(
+    product: Product,
+    db: Session,
+    exclude_ids: set | None = None,
+) -> list[Product]:
+    """
+    Candidatos de fusión para `product` entre el resto del catálogo, exigiendo
+    coincidencia estructural exacta (ver docstring del módulo más arriba) en
+    vez de un score aproximado. Devuelve 0, 1 o más candidatos — más de uno
+    significa ambigüedad real (ej. dos productos ya separados que
+    accidentalmente comparten los mismos tokens) y debe tratarse como "no
+    fusionar", no como "elegir el primero".
+
+    No escribe nada en la base — solo lee. La decisión de aplicar una fusión
+    queda en el llamador (script de backfill), con revisión humana de la
+    lista antes de escribir.
+
+    Exige que `product` tenga marca propia: si no la declara, no hay forma
+    de verificar que el candidato (que puede aportar su propia marca vía
+    fallback) sea realmente el mismo fabricante — visto en la práctica con
+    "Leche Reducida en Lactosa Sachet 1l" (sin marca del lado de Coto)
+    fusionándose con un producto La Serenísima sin poder confirmarlo.
+    """
+    if not product.brand:
+        return []
+
+    name_norm = normalize_name(product.normalized_name)
+    brand_norm = normalize_name(product.brand)
+    nums = _numeric_tokens(name_norm)
+    sig = _significant_tokens(name_norm, brand_norm)
+
+    prefix = product.normalized_name[:15]
+    query = db.query(Product).filter(
+        Product.normalized_name.ilike(f"%{prefix}%"),
+        Product.category == product.category,
+        Product.id != product.id,
+    )
+    if exclude_ids:
+        query = query.filter(~Product.id.in_(exclude_ids))
+
+    matches = []
+    for c in query.limit(200).all():
+        c_name_norm = normalize_name(c.normalized_name)
+        c_brand_norm = normalize_name(c.brand) if c.brand else None
+
+        if brand_norm and c_brand_norm and brand_norm != c_brand_norm:
+            continue
+
+        c_nums = _numeric_tokens(c_name_norm)
+        if nums and c_nums and nums != c_nums:
+            continue
+
+        # Si a un lado le falta la marca estructurada, usar la del otro lado
+        # como fallback: si de verdad es el mismo producto, la marca suele
+        # seguir apareciendo dentro del nombre aunque el campo quedó vacío.
+        c_sig = _significant_tokens(c_name_norm, c_brand_norm or brand_norm)
+        if sig == c_sig:
+            matches.append(c)
+
+    return matches
