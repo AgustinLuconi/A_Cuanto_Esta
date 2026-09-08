@@ -19,7 +19,7 @@ from app.models.price_history import PriceHistory
 from app.models.product import Product, ProductCategory
 from app.schemas import price as price_schemas
 from app.schemas import product as product_schemas
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 router = APIRouter()
 
@@ -137,8 +137,8 @@ def _variation_subquery(db: Session):
         .subquery()
     )
 
-    cutoff_start = utcnow_naive() - timedelta(days=35)
-    cutoff_end = utcnow_naive() - timedelta(days=25)
+    cutoff_start = utcnow_aware() - timedelta(days=35)
+    cutoff_end = utcnow_aware() - timedelta(days=25)
     old_sq = (
         db.query(
             PriceHistory.product_id,

@@ -4,14 +4,14 @@ Utilidad de fecha/hora compartida.
 from datetime import datetime, timezone
 
 
-def utcnow_naive() -> datetime:
+def utcnow_aware() -> datetime:
     """
-    UTC actual como datetime naive (sin tzinfo).
+    UTC actual, timezone-aware (tzinfo=UTC).
 
-    Reemplaza datetime.utcnow() (deprecado desde Python 3.12) sin cambiar el
-    esquema de la base: todas las columnas DateTime de este proyecto son
-    naive (sin timezone=True) y se comparan/escriben como tal en todo el
-    código. Usar datetime.now(timezone.utc) directamente reintroduciría el
-    bug de comparar aware contra naive que ya se corrigió una vez.
+    Reemplaza datetime.utcnow() (deprecado desde Python 3.12). Todas las
+    columnas DateTime del proyecto son timezone-aware (DateTime(timezone=True)),
+    así que este es el único helper de "ahora" que debería usarse tanto para
+    defaults de columnas como para comparaciones — no mezclar con datetimes
+    naive, eso fue exactamente el bug que motivó unificar esto.
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(timezone.utc)

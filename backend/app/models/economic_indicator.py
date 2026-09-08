@@ -7,7 +7,7 @@ import uuid
 import enum
 
 from app.config.database import Base
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 
 class IndicatorType(str, enum.Enum):
@@ -62,8 +62,8 @@ class EconomicIndicator(Base):
     source = Column(SQLEnum(DataSource), nullable=False)
     
     # Metadata
-    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
-    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
+    created_at = Column(DateTime(timezone=True), default=utcnow_aware, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow_aware, onupdate=utcnow_aware)
     
     # Información adicional en JSON (opcional)
     metadata_json = Column(String(1000))  # Para datos extra como notas, etc.

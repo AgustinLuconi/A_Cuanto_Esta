@@ -8,7 +8,7 @@ import uuid
 import enum
 
 from app.config.database import Base
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 
 class ProductCategory(str, enum.Enum):
@@ -68,8 +68,8 @@ class Product(Base):
     barcode = Column(String(50), unique=True, index=True)  # EAN/UPC si está disponible
     
     # Metadata
-    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
-    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
+    created_at = Column(DateTime(timezone=True), default=utcnow_aware, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow_aware, onupdate=utcnow_aware)
     
     # Relaciones
     price_history = relationship("PriceHistory", back_populates="product", cascade="all, delete-orphan")

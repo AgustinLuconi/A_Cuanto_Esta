@@ -9,7 +9,7 @@ import uuid
 import enum
 
 from app.config.database import Base
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 # Umbral a partir del cual un precio se considera desactualizado (scraping diario
 # corre una vez por día; 72hs da margen para un scrape fallido sin marcar todo como stale)
@@ -53,13 +53,13 @@ class PriceHistory(Base):
     
     # Información del scraping
     url = Column(String(500))  # URL del producto en el sitio
-    scraped_at = Column(DateTime, default=utcnow_naive, nullable=False, index=True)
+    scraped_at = Column(DateTime(timezone=True), default=utcnow_aware, nullable=False, index=True)
     
     # Disponibilidad
     in_stock = Column(Boolean, default=True)
 
     # Metadata
-    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow_aware, nullable=False)
     
     # Relaciones
     product = relationship("Product", back_populates="price_history")
@@ -88,4 +88,4 @@ class PriceHistory(Base):
     @property
     def is_stale(self) -> bool:
         """True si este precio no se actualizó en las últimas STALE_THRESHOLD_HOURS horas."""
-        return utcnow_naive() - self.scraped_at > timedelta(hours=STALE_THRESHOLD_HOURS)
+        return utcnow_aware() - self.scraped_at > timedelta(hours=STALE_THRESHOLD_HOURS)

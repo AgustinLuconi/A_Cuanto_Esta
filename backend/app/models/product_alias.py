@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.config.database import Base
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 
 class MatchType(str, enum.Enum):
@@ -25,7 +25,7 @@ class ProductAlias(Base):
     canonical_product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     match_type           = Column(SQLEnum(MatchType), nullable=False)
     confidence           = Column(Float, nullable=False, default=1.0)
-    created_at           = Column(DateTime, default=utcnow_naive, nullable=False)
+    created_at           = Column(DateTime(timezone=True), default=utcnow_aware, nullable=False)
 
     canonical_product = relationship("Product")
 

@@ -19,7 +19,7 @@ from app.api.v1.endpoints.analysis import _build_analysis_text, _compute_price_c
 from app.models.economic_indicator import EconomicIndicator
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 
 # --- _build_analysis_text: función pura ---------------------------------
@@ -164,7 +164,7 @@ def test_price_vs_inflation_raises_404_when_no_price_records_in_period():
 
 
 def _row(product_id, supermarket, price, days_ago, category):
-    return (product_id, supermarket, price, utcnow_naive() - timedelta(days=days_ago), category)
+    return (product_id, supermarket, price, utcnow_aware() - timedelta(days=days_ago), category)
 
 
 def test_compute_price_changes_excludes_pair_below_coverage_threshold():
@@ -303,7 +303,7 @@ def test_category_variation_groups_and_averages_by_category():
 
 
 def _prow(product_id, supermarket, price, days_ago):
-    return (product_id, supermarket, price, utcnow_naive() - timedelta(days=days_ago))
+    return (product_id, supermarket, price, utcnow_aware() - timedelta(days=days_ago))
 
 
 def test_compute_product_price_changes_excludes_pair_below_coverage_threshold():
@@ -399,7 +399,7 @@ def _current_ph(price, original_price, was_on_sale, discount_pct=None, id_=None)
         original_price=original_price,
         was_on_sale=was_on_sale,
         discount_percentage=discount_pct,
-        scraped_at=utcnow_naive(),
+        scraped_at=utcnow_aware(),
     )
 
 

@@ -16,7 +16,7 @@ from app.config.database import get_db
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product, ProductCategory
 from app.schemas import price as schemas_price
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 router = APIRouter()
 
@@ -71,7 +71,7 @@ def get_price_history(
     if supermarket:
         query = query.filter(PriceHistory.supermarket == supermarket)
     if days > 0:
-        cutoff = utcnow_naive() - timedelta(days=days)
+        cutoff = utcnow_aware() - timedelta(days=days)
         query = query.filter(PriceHistory.scraped_at >= cutoff)
 
     records = query.order_by(PriceHistory.scraped_at.desc()).all()

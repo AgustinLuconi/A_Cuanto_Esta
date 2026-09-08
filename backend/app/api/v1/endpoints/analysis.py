@@ -17,7 +17,7 @@ from app.config.database import get_db
 from app.models.economic_indicator import EconomicIndicator, IndicatorType
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product import Product
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 router = APIRouter()
 
@@ -71,7 +71,7 @@ def _compute_price_changes(db: Session, days: int) -> list[tuple[float, str]]:
         (0.02 = 2%), no un porcentaje ya multiplicado por 100. Sin orden
         garantizado; los llamadores solo necesitan iterar los valores.
     """
-    cutoff = utcnow_naive() - timedelta(days=days)
+    cutoff = utcnow_aware() - timedelta(days=days)
     min_days = math.ceil(days * _MIN_COVERAGE_RATIO)
 
     rows = (
@@ -113,7 +113,7 @@ def _compute_product_price_changes(db: Session, days: int) -> list[tuple[UUID, s
     categoría — para "top movers" (mayor variación de precio por producto),
     no un agregado. Devuelve (product_id, supermarket, change_pct).
     """
-    cutoff = utcnow_naive() - timedelta(days=days)
+    cutoff = utcnow_aware() - timedelta(days=days)
     min_days = math.ceil(days * _MIN_COVERAGE_RATIO)
 
     rows = (
@@ -253,7 +253,7 @@ def price_vs_inflation(
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    cutoff = utcnow_naive() - timedelta(days=days)
+    cutoff = utcnow_aware() - timedelta(days=days)
     records = (
         db.query(PriceHistory)
         .filter(
@@ -367,7 +367,7 @@ def discount_check(
     if not current.was_on_sale or not current.original_price:
         return DiscountCheck(has_active_sale=False, reason="Este precio no está marcado como oferta.")
 
-    cutoff = utcnow_naive() - timedelta(days=_DISCOUNT_LOOKBACK_DAYS)
+    cutoff = utcnow_aware() - timedelta(days=_DISCOUNT_LOOKBACK_DAYS)
     recent = (
         db.query(PriceHistory.price)
         .filter(

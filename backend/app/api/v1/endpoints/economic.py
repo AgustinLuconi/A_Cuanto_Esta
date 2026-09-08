@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.models.economic_indicator import EconomicIndicator, IndicatorType
 from app.schemas import economic as schemas_eco
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 router = APIRouter()
 
@@ -123,7 +123,7 @@ def get_economic_context(db: Session = Depends(get_db)):
     # Fecha más reciente entre todos los registros disponibles
     dates = [rec.date for rec in latest.values() if rec is not None]
     last_updated = (
-        datetime.combine(max(dates), time.min) if dates else utcnow_naive()
+        datetime.combine(max(dates), time.min) if dates else utcnow_aware()
     )
 
     # Inflación interanual (últimos 12 meses)
