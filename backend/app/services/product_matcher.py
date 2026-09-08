@@ -212,9 +212,13 @@ def find_strict_match_candidates(
     nums = _numeric_tokens(name_norm)
     sig = _significant_tokens(name_norm, brand_norm)
 
-    prefix = product.normalized_name[:15]
+    # Sin prefiltro por prefijo de nombre: un prefijo de 15 caracteres se
+    # rompe apenas el orden de las palabras difiere entre fuentes (ej. "Chocolate
+    # Shot Con Maní" vs "Chocolate Con Maní Shot" — mismo producto, prefijo
+    # distinto), y se confirmó en la práctica que eso descarta matches reales.
+    # La categoría ya acota lo suficiente (cientos de filas, no miles); el
+    # filtrado real lo hacen la marca, los números y los tokens exactos abajo.
     query = db.query(Product).filter(
-        Product.normalized_name.ilike(f"%{prefix}%"),
         Product.category == product.category,
         Product.id != product.id,
     )
@@ -222,7 +226,7 @@ def find_strict_match_candidates(
         query = query.filter(~Product.id.in_(exclude_ids))
 
     matches = []
-    for c in query.limit(200).all():
+    for c in query.all():
         c_name_norm = normalize_name(c.normalized_name)
         c_brand_norm = normalize_name(c.brand) if c.brand else None
 

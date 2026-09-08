@@ -167,7 +167,7 @@ def _make_product(name, normalized_name, brand=None, category="OTROS", id_="p1")
 
 def _db_returning(candidates):
     db = MagicMock()
-    db.query.return_value.filter.return_value.limit.return_value.all.return_value = candidates
+    db.query.return_value.filter.return_value.all.return_value = candidates
     return db
 
 
