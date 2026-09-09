@@ -27,7 +27,7 @@ from app.config.database import SessionLocal
 from app.models.product import Product
 from app.models.price_history import PriceHistory
 from app.models.product_alias import ProductAlias, MatchType
-from app.utils.time import utcnow_naive
+from app.utils.time import utcnow_aware
 
 # (aislado_a_borrar, canonico) x 2 casos, cada uno con su fuente de alias (o None)
 CASES = [
@@ -110,7 +110,7 @@ def main(apply: bool):
         else:
             backup_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                f"ayudin_merge_backup_{utcnow_naive().strftime('%Y%m%d_%H%M%S')}.json",
+                f"ayudin_merge_backup_{utcnow_aware().strftime('%Y%m%d_%H%M%S')}.json",
             )
             with open(backup_path, "w") as f:
                 json.dump(backup_entries, f, ensure_ascii=False, indent=2)

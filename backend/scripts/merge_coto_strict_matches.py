@@ -31,7 +31,6 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -42,6 +41,7 @@ from app.models.product import Product
 from app.models.price_history import PriceHistory, Supermarket
 from app.models.product_alias import ProductAlias, MatchType
 from app.services.product_matcher import find_strict_match_candidates
+from app.utils.time import utcnow_aware
 
 
 def _snapshot(product: Product, price_rows: list[PriceHistory], alias: ProductAlias | None) -> dict:
@@ -70,6 +70,12 @@ def _snapshot(product: Product, price_rows: list[PriceHistory], alias: ProductAl
 def main(apply: bool, limit: int | None):
     session = SessionLocal()
     backup_entries = []
+    backup_path = None
+    if apply:
+        backup_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            f"coto_merge_backup_{utcnow_aware().strftime('%Y%m%d_%H%M%S')}.json",
+        )
     try:
         coto_ids = {
             row[0]
@@ -148,17 +154,21 @@ def main(apply: bool, limit: int | None):
                 session.delete(product)
                 session.commit()
 
+                # Se vuelca el backup completo a disco después de CADA fusión
+                # (no solo al final del loop): si el proceso se interrumpe a
+                # mitad de camino (visto en la práctica: reinicio de sesión
+                # mató la corrida con 21/46 fusiones ya commiteadas y CERO
+                # backup escrito, porque antes esto se guardaba solo al
+                # final), cada commit en la base ya tiene su snapshot en
+                # disco antes de seguir con el próximo.
+                with open(backup_path, "w") as f:
+                    json.dump(backup_entries, f, ensure_ascii=False, indent=2)
+
         print()
         print(f"Resumen: {merged} fusionados, {ambiguous} ambiguos (sin tocar), {no_match} sin candidato (sin tocar)")
         if not apply:
             print("(dry-run: no se escribió nada en la base — corré con --apply para ejecutar de verdad)")
         else:
-            backup_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                f"coto_merge_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json",
-            )
-            with open(backup_path, "w") as f:
-                json.dump(backup_entries, f, ensure_ascii=False, indent=2)
             print(f"Backup de {len(backup_entries)} fusiones escrito en: {backup_path}")
     finally:
         session.close()
