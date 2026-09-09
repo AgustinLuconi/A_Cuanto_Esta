@@ -106,7 +106,14 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str
-    
+
+    # Web Push (VAPID) — opcionales: sin configurar, el endpoint de la
+    # clave pública devuelve 503 y el script de chequeo aborta con error
+    # claro, en vez de romper el arranque normal de la app.
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_CLAIMS_EMAIL: str = "admin@example.com"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

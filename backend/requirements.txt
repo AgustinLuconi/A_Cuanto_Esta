@@ -28,6 +28,9 @@ httpx==0.26.0
 celery==5.3.6
 redis==5.0.1
 
+# Web Push (notificaciones de alertas de precio)
+pywebpush>=2.0
+
 # Utilidades
 python-dotenv==1.0.1
 python-dateutil==2.8.2
