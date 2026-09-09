@@ -484,15 +484,30 @@ def get_products_bulk(
     return _build_products_with_prices(db, products)
 
 
+_sitemap_ids_cache: dict = {"data": None, "expires_at": None}
+_SITEMAP_IDS_CACHE_TTL = timedelta(hours=1)
+
+
 @router.get("/sitemap-ids")
 def get_product_sitemap_ids(db: Session = Depends(get_db)) -> list[dict]:
     """
     Lista liviana de {id, updated_at} para TODOS los productos — usada por el
     sitemap del frontend. Evita paginar /products (que trae precios) solo
     para juntar IDs.
+
+    Sin autenticación ni límite por ser un full-table scan del lado de la
+    DB, cacheamos en memoria de proceso por 1h (la frescura del sitemap no
+    es crítica) para que llamadas repetidas no fuercen el scan cada vez.
     """
+    now = utcnow_aware()
+    if _sitemap_ids_cache["data"] is not None and now < _sitemap_ids_cache["expires_at"]:
+        return _sitemap_ids_cache["data"]
+
     rows = db.query(Product.id, Product.updated_at).all()
-    return [{"id": str(pid), "updated_at": updated_at.isoformat()} for pid, updated_at in rows]
+    data = [{"id": str(pid), "updated_at": updated_at.isoformat()} for pid, updated_at in rows]
+    _sitemap_ids_cache["data"] = data
+    _sitemap_ids_cache["expires_at"] = now + _SITEMAP_IDS_CACHE_TTL
+    return data
 
 
 @router.get("/facets")
