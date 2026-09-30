@@ -190,3 +190,12 @@ export const ProductCountSchema = z.object({
   count: z.number(),
 });
 export type ProductCount = z.infer<typeof ProductCountSchema>;
+
+export const PriceAlertApiSchema = z.object({
+  id: z.string(),
+  product_id: z.string(),
+  target_price: z.coerce.number(),
+  created_at: z.string(),
+  notified_at_price: z.coerce.number().nullable().default(null),
+});
+export type PriceAlertApi = z.infer<typeof PriceAlertApiSchema>;

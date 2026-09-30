@@ -12,6 +12,7 @@ import {
   ProductWithPricesSchema,
   TopMoverSchema,
   DiscountCheckSchema,
+  PriceAlertApiSchema,
   type EconomicContext,
   type PriceHistoryRecord,
   type PriceIndex,
@@ -23,7 +24,9 @@ import {
   type Supermarket,
   type TopMover,
   type DiscountCheck,
+  type PriceAlertApi,
 } from "@/types";
+import type { PriceAlert } from "@/lib/priceAlertsContext";
 
 const api = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
@@ -230,4 +233,39 @@ export async function getDiscountCheck(
     }
     throw err;
   }
+}
+
+function toPriceAlert(a: PriceAlertApi): PriceAlert {
+  return {
+    id: a.id,
+    productId: a.product_id,
+    targetPrice: a.target_price,
+    createdAt: a.created_at,
+    notifiedAtPrice: a.notified_at_price,
+  };
+}
+
+export async function getVapidPublicKey(): Promise<string> {
+  const { data } = await api.get("/push/vapid-public-key");
+  return z.object({ public_key: z.string() }).parse(data).public_key;
+}
+
+export async function subscribePush(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  alerts: { product_id: string; target_price: number }[]
+): Promise<PriceAlert[]> {
+  const { data } = await api.post("/push/subscribe", { subscription, alerts });
+  const parsed = z
+    .object({ subscription_id: z.string(), alerts: z.array(PriceAlertApiSchema) })
+    .parse(data);
+  return parsed.alerts.map(toPriceAlert);
+}
+
+export async function getPriceAlerts(endpoint: string): Promise<PriceAlert[]> {
+  const { data } = await api.get(`/push/alerts?endpoint=${encodeURIComponent(endpoint)}`);
+  return z.array(PriceAlertApiSchema).parse(data).map(toPriceAlert);
+}
+
+export async function deletePriceAlert(alertId: string): Promise<void> {
+  await api.delete(`/push/alerts/${encodeURIComponent(alertId)}`);
 }
