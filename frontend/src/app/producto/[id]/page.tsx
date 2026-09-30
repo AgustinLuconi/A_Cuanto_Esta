@@ -15,8 +15,9 @@ async function fetchProductForMetadata(id: string) {
   }
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const product = await fetchProductForMetadata(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const product = await fetchProductForMetadata(id);
   if (!product) {
     return { title: "Producto no encontrado" };
   }
@@ -45,8 +46,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   };
 }
 
-export default async function ProductoPage({ params }: { params: { id: string } }) {
-  const product = await fetchProductForMetadata(params.id);
+export default async function ProductoPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const product = await fetchProductForMetadata(id);
 
   const jsonLd = product ? {
     "@context": "https://schema.org",
@@ -81,7 +83,7 @@ export default async function ProductoPage({ params }: { params: { id: string } 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
       )}
-      <ProductDetailClient id={params.id} />
+      <ProductDetailClient id={id} />
     </>
   );
 }
