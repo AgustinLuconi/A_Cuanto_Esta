@@ -85,22 +85,35 @@ export function PriceAlertsProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const addAlert = useCallback(async (productId: string, targetPrice: number) => {
-    const subscription = await getOrCreateSubscription();
-    if (!subscription) {
-      window.alert("No se pudo activar la notificación (permiso denegado o navegador sin soporte).");
-      return;
+    try {
+      const subscription = await getOrCreateSubscription();
+      if (!subscription) {
+        window.alert("No se pudo activar la notificación (permiso denegado o navegador sin soporte).");
+        return;
+      }
+      const subJson = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      const result = await subscribePush(subJson, [{ product_id: productId, target_price: targetPrice }]);
+      setAlerts(result);
+    } catch (err) {
+      // Sin esto, un fallo de red/SW dejaba la UI (el formulario ya
+      // cerrado por el llamador, que no espera esta promesa) mostrando
+      // como si la alerta se hubiera creado aunque no haya pasado nada.
+      console.error("No se pudo crear la alerta de precio:", err);
+      window.alert("No se pudo crear la alerta. Probá de nuevo en un momento.");
     }
-    const subJson = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-    const result = await subscribePush(subJson, [{ product_id: productId, target_price: targetPrice }]);
-    setAlerts(result);
   }, []);
 
   const removeAlert = useCallback(
     async (productId: string) => {
       const alert = alerts.find((a) => a.productId === productId);
       if (!alert) return;
-      await deletePriceAlert(alert.id);
-      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+      try {
+        await deletePriceAlert(alert.id);
+        setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+      } catch (err) {
+        console.error("No se pudo quitar la alerta de precio:", err);
+        window.alert("No se pudo quitar la alerta. Probá de nuevo en un momento.");
+      }
     },
     [alerts]
   );
