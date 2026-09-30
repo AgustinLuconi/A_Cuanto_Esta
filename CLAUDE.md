@@ -30,10 +30,12 @@ pytest -k "test_nombre"        # Un solo test por nombre
 ### Frontend (React)
 ```bash
 cd frontend
-npm install
-npm run dev      # Servidor desarrollo
-npm run build    # Build producción
-npm run lint     # Lint
+# Gestor de paquetes: pnpm (versión fijada en package.json → "packageManager"; con Corepack: corepack enable)
+pnpm install
+pnpm dev         # Servidor desarrollo
+pnpm build       # Build producción
+pnpm lint        # Lint
+pnpm typecheck   # tsc --noEmit
 ```
 
 ## Arquitectura

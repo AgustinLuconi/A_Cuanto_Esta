@@ -66,8 +66,8 @@ El backend estará disponible en `http://localhost:8000`. Puedes ver la document
 Abre una **nueva** terminal y ejecuta:
 ```bash
 cd frontend
-npm install  # (Solo la primera vez si no instalaste las dependencias)
-npm run dev
+pnpm install  # (Solo la primera vez si no instalaste las dependencias)
+pnpm dev
 ```
 El frontend estará disponible en `http://localhost:3000`.
 
