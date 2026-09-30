@@ -22,5 +22,7 @@ services:
         value: '["https://a-cuanto-esta-eight.vercel.app"]'
       - key: SECRET_KEY
         generateValue: true
+      - key: VAPID_PUBLIC_KEY
+        sync: false # Cargar a mano en el dashboard de Render (ver Task 7 del plan de push notifications)
       - key: PYTHON_VERSION
         value: 3.11.8
