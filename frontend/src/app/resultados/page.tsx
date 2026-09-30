@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 import ResultadosContent from "./ResultadosContent";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
 
-export function generateMetadata({
+export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: { q?: string; categoria?: string };
-}): Metadata {
-  const q = searchParams.q?.trim();
-  const catLabel = searchParams.categoria
-    ? CATEGORIES_DESIGN.find((c) => c.id === searchParams.categoria)?.name
+  searchParams: Promise<{ q?: string; categoria?: string }>;
+}): Promise<Metadata> {
+  const { q: rawQ, categoria } = await searchParams;
+  const q = rawQ?.trim();
+  const catLabel = categoria
+    ? CATEGORIES_DESIGN.find((c) => c.id === categoria)?.name
     : undefined;
 
   const title = q
