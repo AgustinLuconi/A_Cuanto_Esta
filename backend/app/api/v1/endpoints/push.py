@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.config.settings import settings
 from app.models.price_alert import PriceAlert
+from app.models.product import Product
 from app.models.push_subscription import PushSubscription
 from app.schemas import push as schemas_push
 
@@ -29,6 +30,19 @@ def get_vapid_public_key():
 
 @router.post("/subscribe", response_model=schemas_push.SubscribeResponse)
 def subscribe(body: schemas_push.SubscribeRequest, db: Session = Depends(get_db)):
+    # Validar los product_id ANTES de tocar la suscripción: en Postgres (Neon)
+    # un product_id inexistente rompería la FK de PriceAlert con un
+    # IntegrityError no capturado (500 crudo); acá lo convertimos en un 404
+    # limpio y no dejamos una suscripción a medio crear si falla.
+    requested_product_ids = {alert_in.product_id for alert_in in body.alerts}
+    if requested_product_ids:
+        existing_ids = {
+            pid for (pid,) in db.query(Product.id).filter(Product.id.in_(requested_product_ids)).all()
+        }
+        missing = requested_product_ids - existing_ids
+        if missing:
+            raise HTTPException(status_code=404, detail=f"Producto(s) no encontrado(s): {missing}")
+
     subscription = (
         db.query(PushSubscription)
         .filter(PushSubscription.endpoint == body.subscription.endpoint)

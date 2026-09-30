@@ -153,3 +153,18 @@ def test_delete_alert(client):
 def test_delete_unknown_alert_is_idempotent(client):
     response = client.delete("/api/v1/push/alerts/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 204
+
+
+def test_subscribe_returns_404_for_unknown_product_id(client):
+    # UUID4 válido (para pasar la validación de Pydantic) pero que no
+    # corresponde a ningún Product sembrado en la DB de test.
+    unknown_product_id = "12345678-1234-4234-8234-123456789abc"
+    response = client.post("/api/v1/push/subscribe", json={
+        "subscription": {"endpoint": "https://push.example.com/f", "keys": {"p256dh": "pk", "auth": "ak"}},
+        "alerts": [{"product_id": unknown_product_id, "target_price": 500}],
+    })
+    assert response.status_code == 404
+
+    # No debe haber quedado ni suscripción ni alerta como efecto colateral.
+    list_response = client.get("/api/v1/push/alerts", params={"endpoint": "https://push.example.com/f"})
+    assert list_response.json() == []
