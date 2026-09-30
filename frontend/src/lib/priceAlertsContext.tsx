@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-
-const STORAGE_KEY = "price_alerts";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { getPriceAlerts, getVapidPublicKey, subscribePush } from "@/lib/api";
+import { deletePriceAlert } from "@/lib/api";
 
 export interface PriceAlert {
+  id: string;
   productId: string;
   targetPrice: number;
   createdAt: string;
@@ -13,89 +14,101 @@ export interface PriceAlert {
 
 type PriceAlertsContextType = {
   alerts: PriceAlert[];
-  addAlert: (productId: string, targetPrice: number) => void;
-  removeAlert: (productId: string) => void;
+  addAlert: (productId: string, targetPrice: number) => Promise<void>;
+  removeAlert: (productId: string) => Promise<void>;
   hasAlert: (productId: string) => boolean;
-  markNotified: (productId: string, price: number) => void;
 };
 
 const PriceAlertsContext = createContext<PriceAlertsContextType>({
   alerts: [],
-  addAlert: () => {},
-  removeAlert: () => {},
+  addAlert: async () => {},
+  removeAlert: async () => {},
   hasAlert: () => false,
-  markNotified: () => {},
 });
 
-function isAlert(v: unknown): v is PriceAlert {
-  return (
-    typeof v === "object" && v !== null &&
-    typeof (v as PriceAlert).productId === "string" &&
-    typeof (v as PriceAlert).targetPrice === "number"
-  );
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64Safe);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) {
+    output[i] = rawData.charCodeAt(i);
+  }
+  return output;
 }
 
-function readStorage(): PriceAlert[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isAlert) : [];
-  } catch {
-    return [];
+/**
+ * Registra el service worker (si hace falta), pide permiso de
+ * notificaciones, y devuelve una PushSubscription activa -- o `null` si el
+ * navegador no soporta push, o el usuario no dio permiso. La usa tanto
+ * `addAlert` acá abajo como el banner de migración (Task 13).
+ */
+export async function getOrCreateSubscription(): Promise<PushSubscription | null> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return null;
   }
-}
+  const registration = await navigator.serviceWorker.register("/sw.js");
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) return existing;
 
-function writeStorage(alerts: PriceAlert[]) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
-  } catch {
-    // localStorage puede fallar (modo privado, cuota llena) — las alertas
-    // simplemente no persisten entre visitas en ese caso.
-  }
+  if (Notification.permission === "denied") return null;
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return null;
+
+  const publicKey = await getVapidPublicKey();
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
 }
 
 export function PriceAlertsProvider({ children }: { children: React.ReactNode }) {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    setAlerts(readStorage());
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    (async () => {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const existing = await registration?.pushManager.getSubscription();
+        if (!existing) return;
+        const serverAlerts = await getPriceAlerts(existing.endpoint);
+        setAlerts(serverAlerts);
+      } catch {
+        // sin conexión o browser sin soporte — se sigue sin alertas cargadas,
+        // el usuario puede reintentar creando una nueva.
+      }
+    })();
   }, []);
 
-  const addAlert = useCallback((productId: string, targetPrice: number) => {
-    setAlerts((prev) => {
-      const next = [
-        ...prev.filter((a) => a.productId !== productId),
-        { productId, targetPrice, createdAt: new Date().toISOString(), notifiedAtPrice: null },
-      ];
-      writeStorage(next);
-      return next;
-    });
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+  const addAlert = useCallback(async (productId: string, targetPrice: number) => {
+    const subscription = await getOrCreateSubscription();
+    if (!subscription) {
+      window.alert("No se pudo activar la notificación (permiso denegado o navegador sin soporte).");
+      return;
     }
+    const subJson = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+    const result = await subscribePush(subJson, [{ product_id: productId, target_price: targetPrice }]);
+    setAlerts(result);
   }, []);
 
-  const removeAlert = useCallback((productId: string) => {
-    setAlerts((prev) => {
-      const next = prev.filter((a) => a.productId !== productId);
-      writeStorage(next);
-      return next;
-    });
-  }, []);
+  const removeAlert = useCallback(
+    async (productId: string) => {
+      const alert = alerts.find((a) => a.productId === productId);
+      if (!alert) return;
+      await deletePriceAlert(alert.id);
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+    },
+    [alerts]
+  );
 
   const hasAlert = useCallback((productId: string) => alerts.some((a) => a.productId === productId), [alerts]);
 
-  const markNotified = useCallback((productId: string, price: number) => {
-    setAlerts((prev) => {
-      const next = prev.map((a) => (a.productId === productId ? { ...a, notifiedAtPrice: price } : a));
-      writeStorage(next);
-      return next;
-    });
-  }, []);
-
   return (
-    <PriceAlertsContext.Provider value={{ alerts, addAlert, removeAlert, hasAlert, markNotified }}>
+    <PriceAlertsContext.Provider value={{ alerts, addAlert, removeAlert, hasAlert }}>
       {children}
     </PriceAlertsContext.Provider>
   );
