@@ -7,7 +7,7 @@ import Header from "@/components/layout/Header";
 import { ThemeProvider } from "@/lib/themeContext";
 import { ShoppingListProvider } from "@/lib/shoppingListContext";
 import { PriceAlertsProvider } from "@/lib/priceAlertsContext";
-import PriceAlertsChecker from "@/components/layout/PriceAlertsChecker";
+import PushMigrationBanner from "@/components/layout/PushMigrationBanner";
 import { env } from "@/lib/env";
 
 const SITE_TITLE = "¿A Cuánto Está? — Comparador de precios en supermercados argentinos";
@@ -70,11 +70,11 @@ export default function RootLayout({
           <QueryProvider>
             <ShoppingListProvider>
               <PriceAlertsProvider>
+                <PushMigrationBanner />
                 <Suspense fallback={null}>
                   <Header />
                 </Suspense>
                 {children}
-                <PriceAlertsChecker />
               </PriceAlertsProvider>
             </ShoppingListProvider>
           </QueryProvider>
