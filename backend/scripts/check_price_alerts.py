@@ -93,8 +93,17 @@ def main():
                     data=payload,
                     vapid_private_key=settings.VAPID_PRIVATE_KEY,
                     vapid_claims={"sub": f"mailto:{settings.VAPID_CLAIMS_EMAIL}"},
+                    timeout=10,
                 )
                 alert.notified_at_price = current_price
+                # Commit por alerta procesada, no al final del loop: si el
+                # proceso muere a mitad de camino (timeout del runner de
+                # GitHub Actions, OOM), los pushes ya enviados con éxito no
+                # deben perderse -- mismo bug ya vivido y arreglado en
+                # merge_coto_strict_matches.py (ver memoria del proyecto
+                # coto_merge_backup_safety_2026_09_09), donde un commit único
+                # al final dejó fusiones ya aplicadas sin registrar.
+                session.commit()
                 print(f"  OK   alerta {alert.id} (producto {alert.product_id}) -> ${current_price}")
             except WebPushException as exc:
                 if exc.status_code in (404, 410):
@@ -102,13 +111,19 @@ def main():
                     expired_subscription_ids.add(subscription.id)
                 else:
                     print(f"  ERROR alerta {alert.id}: {exc}", file=sys.stderr)
+            except Exception as exc:
+                # pywebpush usa requests internamente y NO envuelve errores
+                # de red (timeout, conexión rechazada, etc.) en
+                # WebPushException -- sin este except, uno de esos errores
+                # en una sola alerta tiraría abajo main() entero sin
+                # commitear el resto del progreso ya hecho.
+                print(f"  ERROR DE RED alerta {alert.id}: {exc}", file=sys.stderr)
 
         if expired_subscription_ids:
             session.query(PushSubscription).filter(
                 PushSubscription.id.in_(expired_subscription_ids)
             ).delete(synchronize_session=False)
-
-        session.commit()
+            session.commit()
     finally:
         session.close()
 
