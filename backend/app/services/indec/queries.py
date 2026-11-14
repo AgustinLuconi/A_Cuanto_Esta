@@ -53,12 +53,14 @@ def build_food_vs_wages(
     """
     Toma los últimos `months` períodos presentes en AMBAS series y reescala cada
     una a base 100 en el primer período común (redondeado a 2 decimales).
-    None si hay menos de 2 comunes.
+    None si hay menos de 2 comunes o si algún valor base es 0.
     """
     common = sorted(set(ipc) & set(wages))[-months:]
     if len(common) < 2:
         return None
     first = common[0]
+    if ipc[first] == 0 or wages[first] == 0:
+        return None  # no se puede reescalar a base 100 desde cero
     return FoodVsWages(
         labels=[p.strftime("%Y-%m") for p in common],
         ipc_alimentos=[round(ipc[p] / ipc[first] * 100, 2) for p in common],

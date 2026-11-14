@@ -55,6 +55,7 @@ class IndecClient:
         max_retries: int = 3,
         retry_backoff: float = 1.0,
         page_size: int = 1000,
+        max_pages: int = 1000,
     ):
         self._token = token or settings.INDEC_API_TOKEN
         if not self._token:
@@ -64,9 +65,12 @@ class IndecClient:
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.page_size = page_size
+        self.max_pages = max_pages
 
         days = token_days_remaining(self._token)
-        if days is not None and days < TOKEN_WARNING_DAYS:
+        if days is not None and days < 0:
+            print("[indec] ATENCIÓN: el token VENCIÓ, hay que renovarlo")
+        elif days is not None and days < TOKEN_WARNING_DAYS:
             print(f"[indec] ATENCIÓN: el token vence en {days} días, hay que renovarlo")
 
     def fetch(self, slug: str, params: dict[str, str], order: str) -> list[dict]:
@@ -78,14 +82,20 @@ class IndecClient:
         """
         rows: list[dict] = []
         offset = 0
-        while True:
+        for _ in range(self.max_pages):
             page = self._get_page(
                 slug, {**params, "order": order, "limit": self.page_size, "offset": offset}
             )
-            rows.extend(page)
-            if len(page) < self.page_size:
+            # Solo una página VACÍA marca el fin: si el INDEC baja su tope por
+            # request, una página corta no significa que no haya más datos.
+            if not page:
                 return rows
-            offset += self.page_size
+            rows.extend(page)
+            offset += len(page)
+        # Un servidor que ignora `offset` devolvería siempre las mismas filas
+        raise IndecError(
+            f"{slug}: se superó el tope de {self.max_pages} páginas sin llegar al final"
+        )
 
     def _get_page(self, slug: str, params: dict) -> list[dict]:
         """Pide una página con reintentos ante errores de red y 5xx."""
@@ -107,7 +117,7 @@ class IndecClient:
                 status = response.status_code
                 if status in (401, 403):
                     raise IndecAuthError(f"INDEC rechazó el token (HTTP {status}) en {slug}")
-                if status >= 500:
+                if status == 429 or status >= 500:  # límite de tasa o error del servidor: se reintenta
                     last_error = f"HTTP {status}"
                 elif status >= 400:
                     raise IndecError(f"INDEC respondió HTTP {status} en {slug}")

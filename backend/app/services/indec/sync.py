@@ -35,6 +35,7 @@ class SyncResult:
     fetched: int
     inserted: int
     updated: int
+    unchanged: int = 0
 
 
 @dataclass
@@ -83,6 +84,7 @@ def sync_dataset(
         fetched=len(raw_rows),
         inserted=result.inserted,
         updated=result.updated,
+        unchanged=result.unchanged,
     )
 
 

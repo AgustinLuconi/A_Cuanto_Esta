@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ _KEY_FIELDS = (
 class UpsertResult:
     inserted: int
     updated: int
+    unchanged: int = 0  # ya estaban guardadas con el mismo contenido
 
 
 def _parse_period(raw) -> date | None:
@@ -113,7 +114,7 @@ def upsert_observations(
     Inserta o actualiza observaciones ya normalizadas, en lotes. No hace commit:
     el llamador decide cuándo persistir (un commit por dataset).
     """
-    inserted = updated = 0
+    inserted = updated = unchanged = 0
     for start in range(0, len(rows), batch_size):
         batch = rows[start : start + batch_size]
         stmt = insert(IndecObservation).values(batch)
@@ -126,11 +127,23 @@ def upsert_observations(
                 "notes": stmt.excluded.notes,
                 "ingested_at": utcnow_aware(),
             },
+            # Solo se reescribe lo que realmente cambió: así `ingested_at` es
+            # "cuándo se cargó o se modificó" y no "última vez que se vio", y
+            # `updated` cuenta revisiones reales del INDEC.
+            where=or_(
+                IndecObservation.value.is_distinct_from(stmt.excluded.value),
+                IndecObservation.series_name.is_distinct_from(stmt.excluded.series_name),
+                IndecObservation.unit.is_distinct_from(stmt.excluded.unit),
+                IndecObservation.notes.is_distinct_from(stmt.excluded.notes),
+            ),
         ).returning(literal_column("(xmax = 0)"))
-        # xmax = 0 solo en filas recién insertadas; en las actualizadas es > 0
-        for (was_inserted,) in session.execute(stmt).all():
+        # xmax = 0 solo en filas recién insertadas; en las actualizadas es > 0.
+        # Las filas sin cambios no se devuelven (el WHERE del upsert las omite).
+        flags = session.execute(stmt).all()
+        for (was_inserted,) in flags:
             if was_inserted:
                 inserted += 1
             else:
                 updated += 1
-    return UpsertResult(inserted=inserted, updated=updated)
+        unchanged += len(batch) - len(flags)
+    return UpsertResult(inserted=inserted, updated=updated, unchanged=unchanged)

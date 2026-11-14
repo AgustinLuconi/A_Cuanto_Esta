@@ -47,11 +47,12 @@ def _make_jwt(exp: datetime) -> str:
 
 
 def test_fetch_sends_bearer_header_and_url():
-    with patch(HTTPX_GET, return_value=_resp(_rows(1))) as mock_get:
+    with patch(HTTPX_GET, side_effect=[_resp(_rows(1)), _resp([])]) as mock_get:
         _client().fetch("ipc_nacional", {"codigo": "in.(0,01)"}, ORDER)
 
-    assert mock_get.call_args[0][0].endswith("/v1/ipc_nacional")
-    kwargs = mock_get.call_args[1]
+    first_call = mock_get.call_args_list[0]
+    assert first_call[0][0].endswith("/v1/ipc_nacional")
+    kwargs = first_call[1]
     assert kwargs["headers"]["Authorization"] == f"Bearer {TOKEN}"
     assert kwargs["params"] == {
         "codigo": "in.(0,01)",
@@ -61,14 +62,14 @@ def test_fetch_sends_bearer_header_and_url():
     }
 
 
-def test_fetch_paginates_until_short_page():
-    pages = [_resp(_rows(1000)), _resp(_rows(3, start=1000))]
+def test_fetch_paginates_until_empty_page():
+    pages = [_resp(_rows(1000)), _resp(_rows(3, start=1000)), _resp([])]
     with patch(HTTPX_GET, side_effect=pages) as mock_get:
         rows = _client().fetch("ipc_nacional", {}, ORDER)
 
     assert len(rows) == 1003
     offsets = [c[1]["params"]["offset"] for c in mock_get.call_args_list]
-    assert offsets == [0, 1000]
+    assert offsets == [0, 1000, 1003]
 
 
 def test_fetch_requests_next_page_after_exactly_full_page():
@@ -82,7 +83,7 @@ def test_fetch_requests_next_page_after_exactly_full_page():
 
 
 def test_fetch_retries_on_5xx_then_succeeds():
-    responses = [_resp(None, 503), _resp(None, 503), _resp(_rows(2))]
+    responses = [_resp(None, 503), _resp(None, 503), _resp(_rows(2)), _resp([])]
     with patch(HTTPX_GET, side_effect=responses), patch(SLEEP) as mock_sleep:
         rows = _client().fetch("ipc_nacional", {}, ORDER)
 
@@ -134,8 +135,7 @@ def test_init_warns_when_token_expires_soon(capsys):
     IndecClient(token=token)
 
     out = capsys.readouterr().out
-    assert "vence" in out
-    assert "5" in out
+    assert "vence en 5 días" in out
     assert token not in out
 
 
@@ -145,3 +145,54 @@ def test_fetch_raises_indec_error_on_non_json_body():
     with patch(HTTPX_GET, return_value=broken):
         with pytest.raises(IndecError):
             _client().fetch("ipc_nacional", {}, ORDER)
+
+
+def test_fetch_advances_offset_by_actual_page_length():
+    # Si el INDEC baja su tope por request (ej. a 500), una página corta no
+    # significa "fin" y el offset debe avanzar por lo recibido, no por page_size.
+    pages = [_resp(_rows(500)), _resp(_rows(500, start=500)), _resp([])]
+    with patch(HTTPX_GET, side_effect=pages) as mock_get:
+        rows = _client().fetch("ipc_nacional", {}, ORDER)
+
+    assert len(rows) == 1000
+    offsets = [c[1]["params"]["offset"] for c in mock_get.call_args_list]
+    assert offsets == [0, 500, 1000]
+
+
+def test_fetch_raises_if_server_ignores_offset():
+    # Un servidor que ignora `offset` devolvería siempre las mismas filas: sin
+    # tope de páginas el job giraría hasta agotar el timeout de 15 minutos.
+    with patch(HTTPX_GET, return_value=_resp(_rows(5))) as mock_get:
+        with pytest.raises(IndecError):
+            _client(max_pages=3).fetch("ipc_nacional", {}, ORDER)
+
+    assert mock_get.call_count == 3
+
+
+def test_fetch_retries_on_429_then_succeeds():
+    responses = [_resp(None, 429), _resp(_rows(1)), _resp([])]
+    with patch(HTTPX_GET, side_effect=responses), patch(SLEEP) as mock_sleep:
+        rows = _client().fetch("ipc_nacional", {}, ORDER)
+
+    assert len(rows) == 1
+    assert mock_sleep.call_count == 1
+
+
+def test_fetch_raises_auth_error_on_403_without_retry():
+    with patch(HTTPX_GET, return_value=_resp(None, 403)) as mock_get, patch(SLEEP) as mock_sleep:
+        with pytest.raises(IndecAuthError) as exc_info:
+            _client().fetch("ipc_nacional", {}, ORDER)
+
+    assert mock_get.call_count == 1
+    mock_sleep.assert_not_called()
+    assert TOKEN not in str(exc_info.value)
+
+
+def test_init_reports_already_expired_token(capsys):
+    token = _make_jwt(datetime.now(timezone.utc) - timedelta(days=3))
+    IndecClient(token=token)
+
+    out = capsys.readouterr().out
+    assert "VENCIÓ" in out
+    assert "-" not in out  # nada de "vence en -4 días"
+    assert token not in out

@@ -188,3 +188,13 @@ def test_sync_all_catches_unexpected_exceptions_and_continues():
     assert "inesperado" in report.errors["ipc_nacional"]
     assert [r.dataset for r in report.results] == ["indice_salarios"]
     session.rollback.assert_called()
+
+
+def test_main_prints_unchanged_count(capsys):
+    report = SyncReport(results=[SyncResult("ipc_nacional", 10, 1, 2, unchanged=7)], errors={})
+    with patch.object(fetch_indec_data, "IndecClient"), \
+         patch.object(fetch_indec_data, "SessionLocal"), \
+         patch.object(fetch_indec_data, "sync_all", return_value=report):
+        fetch_indec_data.main([])
+
+    assert "sin cambios: 7" in capsys.readouterr().out

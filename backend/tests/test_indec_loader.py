@@ -180,3 +180,23 @@ def test_normalize_reports_dropped_rows_and_conflicting_duplicates(capsys):
     assert "1 descartadas" in out
     assert "2 duplicadas" in out
     assert "1 con valores distintos" in out
+
+
+def test_upsert_statement_only_updates_changed_rows():
+    # Sin esto, cada corrida diaria reescribe toda la ventana de 3 meses y
+    # ingested_at pierde sentido (sería "última vez vista").
+    session = MagicMock()
+
+    upsert_observations(session, [_obs(1)])
+
+    sql = str(session.execute.call_args[0][0].compile(dialect=postgresql.dialect()))
+    assert "IS DISTINCT FROM" in sql
+
+
+def test_upsert_reports_unchanged_rows():
+    session = MagicMock()
+    session.execute.return_value.all.return_value = [(True,)]  # solo 1 fila cambió
+
+    result = upsert_observations(session, [_obs(i) for i in range(3)])
+
+    assert result == UpsertResult(inserted=1, updated=0, unchanged=2)

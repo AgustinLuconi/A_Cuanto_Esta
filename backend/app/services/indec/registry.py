@@ -5,6 +5,11 @@ Es la única parte que se edita para sumar un dataset: cada `DatasetSpec`
 dice qué cortes (slices) se piden, con filtros del lado servidor, para no
 bajar series que nadie usa (el IPC completo tiene 235.683 filas).
 
+IMPORTANTE: al agregar un slice nuevo a un dataset que YA tiene datos guardados,
+el modo incremental solo trae los últimos 3 meses de ese corte; hay que correr
+una vez `python scripts/fetch_indec_data.py --dataset <slug> --full` (o el
+workflow `indec-sync` con `full=true`) para cargar su historia completa.
+
 Los filtros usan la sintaxis PostgREST de la API: `eq.<valor>` o `in.(a,b,c)`.
 Los valores fueron verificados contra el INDEC real el 2026-11-14.
 """

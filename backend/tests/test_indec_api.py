@@ -133,3 +133,10 @@ def test_build_food_vs_wages_returns_none_with_fewer_than_two_common_periods():
     wages = {date(2026, 2, 1): 5.0, date(2026, 3, 1): 6.0}
 
     assert build_food_vs_wages(ipc, wages) is None
+
+
+def test_build_food_vs_wages_returns_none_when_a_base_value_is_zero():
+    ipc = {date(2026, 1, 1): 0.0, date(2026, 2, 1): 5.0}
+    wages = {date(2026, 1, 1): 50.0, date(2026, 2, 1): 55.0}
+
+    assert build_food_vs_wages(ipc, wages) is None

@@ -45,7 +45,10 @@ def main(argv: list[str] | None = None) -> int:
         session.close()
 
     for r in report.results:
-        print(f"[{r.dataset}] pedidas: {r.fetched} | nuevas: {r.inserted} | actualizadas: {r.updated}")
+        print(
+            f"[{r.dataset}] pedidas: {r.fetched} | nuevas: {r.inserted} | "
+            f"actualizadas: {r.updated} | sin cambios: {r.unchanged}"
+        )
     for slug, error in report.errors.items():
         print(f"[{slug}] ERROR: {error}")
     return 1 if report.errors else 0

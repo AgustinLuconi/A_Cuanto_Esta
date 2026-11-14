@@ -50,6 +50,7 @@ class IndecObservation(Base):
     value = Column(Numeric(18, 4), nullable=False)
     notes = Column(Text)
 
+    # Cuándo se cargó o se modificó por última vez (las filas sin cambios no se reescriben)
     ingested_at = Column(
         DateTime(timezone=True), nullable=False, default=utcnow_aware
     )

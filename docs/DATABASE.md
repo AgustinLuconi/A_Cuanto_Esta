@@ -91,7 +91,7 @@ Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de 
 | period | DATE | No | Primer dia del mes del dato |
 | value | NUMERIC(18,4) | No | Valor |
 | notes | TEXT | Si | Observaciones del INDEC |
-| ingested_at | TIMESTAMPTZ | No | Cuando se cargo o actualizo |
+| ingested_at | TIMESTAMPTZ | No | Cuando se cargo o se modifico por ultima vez (las filas sin cambios no se reescriben) |
 
 **Unicidad:** `uq_indec_observation_key` sobre `(dataset, classifier, level, series_code, region, indicator_type, period)`. `region` es NOT NULL a proposito: en PostgreSQL dos `NULL` no cuentan como iguales y el upsert duplicaria filas.
 
