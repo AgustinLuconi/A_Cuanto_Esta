@@ -153,6 +153,25 @@ export const IndecOverviewSchema = z.object({
 });
 export type IndecOverview = z.infer<typeof IndecOverviewSchema>;
 
+// Cruce de precios (GET /indec/price-reference): precio promedio del INDEC vs.
+// la mediana de los productos equivalentes de nuestros supermercados, ambos en
+// el tamaño de referencia del INDEC.
+export const PriceReferenceItemSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  reference_unit: z.string(),
+  indec_period: z.string(),
+  indec_price: z.number(),
+  ours_median: z.number(),
+  ours_p25: z.number(), // la mitad central de los productos va de p25 a p75
+  ours_p75: z.number(),
+  diff_pct: z.number(), // fracción: 0.1 = 10% más caro que el INDEC
+  n_offers: z.number(),
+  n_products: z.number(),
+  n_supermarkets: z.number(),
+});
+export type PriceReferenceItem = z.infer<typeof PriceReferenceItemSchema>;
+
 export const EconomicIndicatorSchema = z.object({
   id: z.string(),
   indicator_type: z.string(),

@@ -88,6 +88,7 @@ Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de 
 | region | VARCHAR(40) | No | Region; los datasets sin region se guardan como `Nacional` |
 | indicator_type | VARCHAR(60) | No | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`... |
 | unit | TEXT | Si | Unidad de medida (texto libre del INDEC) |
+| indicator_description | TEXT | Si | Como leer el valor; en los precios promedio es la unidad de referencia (ej: `Valor por 390 g`). Las filas cargadas antes de existir esta columna se completan con la proxima sincronizacion (ultimos 3 meses) o con `--full` |
 | period | DATE | No | Primer dia del mes del dato |
 | value | NUMERIC(18,4) | No | Valor |
 | notes | TEXT | Si | Observaciones del INDEC |

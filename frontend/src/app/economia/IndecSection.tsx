@@ -4,16 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getIndecOverview } from "@/lib/api";
 import { DualLineChart, fmtPct, fmtPrice } from "@/components/design/components";
 import type { LatestPoint } from "@/types";
-
-// "2026-10-01" -> "oct 2026". Se fuerza UTC para que la zona horaria local no
-// corra el primer día del mes al mes anterior.
-function fmtPeriod(iso: string): string {
-  return new Date(iso + "T00:00:00Z").toLocaleDateString("es-AR", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+import { fmtPeriod } from "./format";
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (

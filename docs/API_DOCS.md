@@ -123,6 +123,16 @@ Ultimo valor de las series de la pantalla de economia. Cada campo es `{period, v
 
 Ademas `food_vs_wages`: `{labels, ipc_alimentos, salarios}` con IPC Alimentos vs. indice de salarios, ambos en base 100 desde el primer periodo comun (ultimos 24 meses), o `null`.
 
+### GET /indec/price-reference
+
+Cruce de precios: precio promedio oficial del INDEC (GBA) contra la mediana de los productos equivalentes de los supermercados de la app. Todo se expresa en el tamano de referencia que usa el INDEC (ej: "por 500 g").
+
+- Los productos equivalentes se eligen con reglas explicitas por articulo (`backend/app/services/indec/reference_rules.py`) y se normalizan a precio por kg / litro / unidad.
+- Solo cuentan ofertas frescas (ultimas 72 hs), en stock, con precio > 0, de un envase entre 0,5x y 2x el tamano de referencia y con un precio por unidad plausible (0,2x a 5x el del INDEC).
+- Un articulo se incluye solo con al menos 3 ofertas validas. Sin datos suficientes devuelve `[]`. El resultado se cachea 30 minutos.
+
+Respuesta: lista de `{code, label, reference_unit, indec_period, indec_price, ours_median, ours_p25, ours_p75, diff_pct, n_offers, n_products, n_supermarkets}`. `ours_p25`-`ours_p75` es la mitad central de las ofertas y `diff_pct` es una fraccion (0.1 = los supermercados un 10% mas caros que el INDEC).
+
 ---
 
 ## Analysis

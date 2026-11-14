@@ -5,6 +5,7 @@ import {
   EconomicContextSchema,
   EconomicIndicatorSchema,
   IndecOverviewSchema,
+  PriceReferenceItemSchema,
   PriceHistoryRecordSchema,
   PriceIndexSchema,
   PriceInflationAnalysisSchema,
@@ -16,6 +17,7 @@ import {
   PriceAlertApiSchema,
   type EconomicContext,
   type IndecOverview,
+  type PriceReferenceItem,
   type PriceHistoryRecord,
   type PriceIndex,
   type PriceInflationAnalysis,
@@ -138,6 +140,11 @@ export async function getEconomicContext(): Promise<EconomicContext> {
 export async function getIndecOverview(): Promise<IndecOverview> {
   const { data } = await api.get("/indec/overview");
   return IndecOverviewSchema.parse(data);
+}
+
+export async function getIndecPriceReference(): Promise<PriceReferenceItem[]> {
+  const { data } = await api.get("/indec/price-reference");
+  return z.array(PriceReferenceItemSchema).parse(data);
 }
 
 export async function getInflationHistory(
