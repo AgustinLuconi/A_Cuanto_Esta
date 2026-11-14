@@ -24,6 +24,10 @@ from app.utils.time import utcnow_aware
 # La consulta recorre varios días de historial de precios: se cachea en memoria.
 # Los datos cambian como mucho una vez por día (scraping) o por mes (INDEC).
 CACHE_TTL = timedelta(minutes=30)
+# Un resultado VACÍO se cachea poco: suele ser que todavía no hay datos (recién
+# desplegado o antes de la primera sincronización) y no debe ocultar la tabla
+# durante todo el CACHE_TTL en cuanto aparezcan.
+EMPTY_CACHE_TTL = timedelta(minutes=1)
 _cache: dict = {}  # {"at": datetime, "value": list[ReferenceItem]}
 
 
@@ -108,8 +112,10 @@ def get_price_reference(
     """Cruce completo INDEC vs. supermercados, cacheado CACHE_TTL."""
     now = now or utcnow_aware()
     cached = _cache.get("value")
-    if cached is not None and now - _cache["at"] < CACHE_TTL:
-        return cached
+    if cached is not None:
+        ttl = CACHE_TTL if cached else EMPTY_CACHE_TTL
+        if now - _cache["at"] < ttl:
+            return cached
     items = assemble_price_reference(
         rules, fetch_indec_points(db, rules), fetch_fresh_offers(db, now)
     )

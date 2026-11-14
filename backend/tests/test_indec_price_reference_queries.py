@@ -132,3 +132,18 @@ def test_get_price_reference_recomputes_after_the_cache_expires(db):
     later = q.get_price_reference(db, now=NOW + q.CACHE_TTL + timedelta(seconds=1))
 
     assert len(later) == 1
+
+
+def test_an_empty_result_is_only_cached_briefly(db):
+    # Si el primer pedido llega antes de que haya datos (ej. recién desplegado),
+    # un resultado vacío no puede ocultar la tabla durante todo el CACHE_TTL.
+    _indec(db, AZUCAR.indec_code, 1600, "Valor por kg", date(2026, 10, 1))
+    assert q.get_price_reference(db, now=NOW) == []
+
+    for i in range(3):
+        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), 1600)
+
+    # Dentro del vencimiento corto sigue el resultado vacío cacheado...
+    assert q.get_price_reference(db, now=NOW + q.EMPTY_CACHE_TTL - timedelta(seconds=1)) == []
+    # ...y pasado ese minuto se vuelve a calcular y aparece el dato.
+    assert len(q.get_price_reference(db, now=NOW + q.EMPTY_CACHE_TTL + timedelta(seconds=1))) == 1
