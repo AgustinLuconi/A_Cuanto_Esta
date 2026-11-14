@@ -67,6 +67,7 @@ def _to_observation(spec: DatasetSpec, row: dict) -> dict | None:
             "region": (row.get("region") or DEFAULT_REGION) if spec.has_region else DEFAULT_REGION,
             "indicator_type": row["tipo_de_indicador"],
             "unit": row.get("unidad_de_medida"),
+            "indicator_description": row.get("tipo_de_indicador_descripcion"),
             "period": period,
             "value": value,
             "notes": row.get("observaciones"),
@@ -124,6 +125,7 @@ def upsert_observations(
                 "value": stmt.excluded.value,
                 "series_name": stmt.excluded.series_name,
                 "unit": stmt.excluded.unit,
+                "indicator_description": stmt.excluded.indicator_description,
                 "notes": stmt.excluded.notes,
                 "ingested_at": utcnow_aware(),
             },
@@ -134,6 +136,9 @@ def upsert_observations(
                 IndecObservation.value.is_distinct_from(stmt.excluded.value),
                 IndecObservation.series_name.is_distinct_from(stmt.excluded.series_name),
                 IndecObservation.unit.is_distinct_from(stmt.excluded.unit),
+                IndecObservation.indicator_description.is_distinct_from(
+                    stmt.excluded.indicator_description
+                ),
                 IndecObservation.notes.is_distinct_from(stmt.excluded.notes),
             ),
         ).returning(literal_column("(xmax = 0)"))

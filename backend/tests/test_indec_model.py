@@ -50,3 +50,10 @@ def test_free_text_columns_are_unbounded():
     # rechazaría todo el dataset ante un valor más largo de lo previsto.
     assert isinstance(TABLE.c.series_name.type, Text)
     assert isinstance(TABLE.c.unit.type, Text)
+
+
+def test_indicator_description_is_nullable_text():
+    # Guarda "Valor por 390 g": la unidad de referencia de los precios promedio
+    assert "indicator_description" in TABLE.c
+    assert TABLE.c.indicator_description.nullable
+    assert isinstance(TABLE.c.indicator_description.type, Text)

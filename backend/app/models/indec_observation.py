@@ -44,6 +44,9 @@ class IndecObservation(Base):
 
     indicator_type = Column(String(60), nullable=False)   # ej. "Indice", "v_m", "v_ia"
     unit = Column(Text)                                   # ej. "Porcentaje" (texto libre del INDEC)
+    # Cómo leer el valor, ej. "Valor por 390 g" en los precios promedio (la unidad
+    # de referencia: el INDEC la informa por fila y no cambia en el tiempo)
+    indicator_description = Column(Text)
 
     # Dato
     period = Column(Date, nullable=False)                 # primer día del mes

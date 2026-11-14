@@ -43,6 +43,7 @@ def _obs(i):
         "region": "Nacional",
         "indicator_type": "v_m",
         "unit": "Porcentaje",
+        "indicator_description": None,
         "period": date(2026, 10, 1),
         "value": Decimal("1.0"),
         "notes": None,
@@ -200,3 +201,31 @@ def test_upsert_reports_unchanged_rows():
     result = upsert_observations(session, [_obs(i) for i in range(3)])
 
     assert result == UpsertResult(inserted=1, updated=0, unchanged=2)
+
+
+def test_normalize_keeps_the_reference_unit_description():
+    row = _ipc_row(
+        tipo_de_indicador="Precio promedio",
+        tipo_de_indicador_descripcion="Valor por 390 g",
+    )
+
+    [obs] = normalize_rows(IPC, [row])
+
+    assert obs["indicator_description"] == "Valor por 390 g"
+
+
+def test_normalize_leaves_description_none_when_missing():
+    [obs] = normalize_rows(IPC, [_ipc_row()])
+
+    assert obs["indicator_description"] is None
+
+
+def test_upsert_updates_rows_whose_description_changed():
+    # Permite completar la unidad en filas ya cargadas con un --full
+    session = MagicMock()
+
+    upsert_observations(session, [_obs(1)])
+
+    sql = str(session.execute.call_args[0][0].compile(dialect=postgresql.dialect()))
+    assert "indicator_description IS DISTINCT FROM" in sql
+    assert "indicator_description=excluded.indicator_description" in sql.replace(" ", "")
