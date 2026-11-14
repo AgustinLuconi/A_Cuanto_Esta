@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/design/icons";
@@ -56,6 +56,14 @@ export default function Header() {
   const searchParams = useSearchParams();
 
   const { theme, toggleTheme }         = useTheme();
+  // El Header se hidrata dentro de un <Suspense>, a veces DESPUÉS de que el
+  // efecto del ThemeProvider ya pasó el tema a "dark". Si el botón usara
+  // `theme` directo, el cliente pintaría sol/luna distinto al HTML del servidor
+  // (siempre "light") y React descartaría el árbol por mismatch de hidratación.
+  // Hasta que el propio Header se monta, el botón se comporta como "light".
+  const [mounted, setMounted]          = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && theme === "dark";
   const { items: cartItems }           = useShoppingList();
   const itemCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
   const { alerts }                     = usePriceAlerts();
@@ -145,10 +153,10 @@ export default function Header() {
         <button
           className="tb-pill"
           onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           style={{ cursor: "pointer" }}
         >
-          {theme === "dark" ? <Icon.sun /> : <Icon.moon />}
+          {isDark ? <Icon.sun /> : <Icon.moon />}
         </button>
       </div>
     </header>
