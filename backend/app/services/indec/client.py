@@ -112,7 +112,10 @@ class IndecClient:
                 elif status >= 400:
                     raise IndecError(f"INDEC respondió HTTP {status} en {slug}")
                 else:
-                    data = response.json()
+                    try:
+                        data = response.json()
+                    except ValueError:
+                        raise IndecError(f"Respuesta inesperada de INDEC en {slug}: no es JSON")
                     if not isinstance(data, list):
                         raise IndecError(f"Respuesta inesperada de INDEC en {slug}: no es una lista")
                     return data

@@ -10,6 +10,13 @@ _IPC = "ipc_nacional"
 _CANASTAS = "valorizacion_canastas_cba_cbt"
 _SALARIOS = "indice_salarios"
 
+# Clasificador esperado de cada serie del overview. Se fija para que, si un mismo
+# código apareciera bajo dos clasificadores, no se elija uno al azar.
+_CLS_IPC_GENERAL = "IPC"
+_CLS_IPC_COICOP = "COICOP Argentina 2019"
+_CLS_CANASTAS = "CBA y CBT"
+_CLS_SALARIOS = "IS 2001"
+
 
 def get_series(
     db: Session,
@@ -18,6 +25,7 @@ def get_series(
     code: str | None = None,
     region: str | None = None,
     indicator: str | None = None,
+    classifier: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = 1000,
@@ -30,6 +38,8 @@ def get_series(
         query = query.filter(IndecObservation.region == region)
     if indicator is not None:
         query = query.filter(IndecObservation.indicator_type == indicator)
+    if classifier is not None:
+        query = query.filter(IndecObservation.classifier == classifier)
     if date_from is not None:
         query = query.filter(IndecObservation.period >= date_from)
     if date_to is not None:
@@ -57,12 +67,13 @@ def build_food_vs_wages(
 
 
 def _latest_point(
-    db: Session, dataset: str, code: str, region: str, indicator: str
+    db: Session, dataset: str, classifier: str, code: str, region: str, indicator: str
 ) -> LatestPoint | None:
     row = (
         db.query(IndecObservation)
         .filter(
             IndecObservation.dataset == dataset,
+            IndecObservation.classifier == classifier,
             IndecObservation.series_code == code,
             IndecObservation.region == region,
             IndecObservation.indicator_type == indicator,
@@ -80,20 +91,22 @@ def _as_dict(rows: list[IndecObservation]) -> dict[date, float]:
 
 
 def get_overview(db: Session) -> IndecOverview:
-    """Último valor de cada serie de la pantalla; cada campo falla a None por separado."""
+    """Último valor de cada serie de la pantalla; sin datos, cada campo queda en None."""
     ipc_alimentos = get_series(
-        db, dataset=_IPC, code="01", region="Nacional", indicator="Indice", limit=5000
+        db, dataset=_IPC, classifier=_CLS_IPC_COICOP, code="01",
+        region="Nacional", indicator="Indice", limit=5000,
     )
     salarios = get_series(
-        db, dataset=_SALARIOS, code="0", region="Nacional", indicator="Indice", limit=5000
+        db, dataset=_SALARIOS, classifier=_CLS_SALARIOS, code="0",
+        region="Nacional", indicator="Indice", limit=5000,
     )
     return IndecOverview(
-        ipc_general_mensual=_latest_point(db, _IPC, "0", "Nacional", "v_m"),
-        ipc_general_interanual=_latest_point(db, _IPC, "0", "Nacional", "v_ia"),
-        ipc_alimentos_mensual=_latest_point(db, _IPC, "01", "Nacional", "v_m"),
-        ipc_alimentos_interanual=_latest_point(db, _IPC, "01", "Nacional", "v_ia"),
-        cba=_latest_point(db, _CANASTAS, "CBA", "GBA", "CBA"),
-        cbt=_latest_point(db, _CANASTAS, "CBT", "GBA", "CBT"),
-        ice=_latest_point(db, _CANASTAS, "ICE", "GBA", "ICE"),
+        ipc_general_mensual=_latest_point(db, _IPC, _CLS_IPC_GENERAL, "0", "Nacional", "v_m"),
+        ipc_general_interanual=_latest_point(db, _IPC, _CLS_IPC_GENERAL, "0", "Nacional", "v_ia"),
+        ipc_alimentos_mensual=_latest_point(db, _IPC, _CLS_IPC_COICOP, "01", "Nacional", "v_m"),
+        ipc_alimentos_interanual=_latest_point(db, _IPC, _CLS_IPC_COICOP, "01", "Nacional", "v_ia"),
+        cba=_latest_point(db, _CANASTAS, _CLS_CANASTAS, "CBA", "GBA", "CBA"),
+        cbt=_latest_point(db, _CANASTAS, _CLS_CANASTAS, "CBT", "GBA", "CBT"),
+        ice=_latest_point(db, _CANASTAS, _CLS_CANASTAS, "ICE", "GBA", "ICE"),
         food_vs_wages=build_food_vs_wages(_as_dict(ipc_alimentos), _as_dict(salarios)),
     )

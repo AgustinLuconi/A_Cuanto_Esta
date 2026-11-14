@@ -64,15 +64,18 @@ def sync_dataset(
 
     raw_rows: list[dict] = []
     for slice_ in spec.slices:
-        raw_rows.extend(client.fetch(spec.slug, {**slice_, **period_filter}, spec.order))
+        slice_rows = client.fetch(spec.slug, {**slice_, **period_filter}, spec.order)
+        # Cada corte debe traer filas utilizables por sí mismo: uno vacío no
+        # puede quedar tapado por otro con datos (el job saldría "en verde"
+        # con una serie desactualizada).
+        if not normalize_rows(spec, slice_rows, report=False):
+            raise EmptyDatasetError(
+                f"{spec.slug}: el corte {slice_} no devolvió filas utilizables "
+                f"({len(slice_rows)} crudas)"
+            )
+        raw_rows.extend(slice_rows)
 
     observations = normalize_rows(spec, raw_rows)
-    if not observations:
-        raise EmptyDatasetError(
-            f"{spec.slug}: el INDEC no devolvió filas utilizables "
-            f"({len(raw_rows)} crudas)"
-        )
-
     result = upsert_observations(session, observations)
     session.commit()
     return SyncResult(
@@ -86,12 +89,14 @@ def sync_dataset(
 def sync_all(
     session: Session, client: IndecClient, specs: list[DatasetSpec], *, full: bool = False
 ) -> SyncReport:
-    """Sincroniza todos los datasets; un error en uno no frena a los demás."""
+    """Sincroniza todos los datasets; cualquier error en uno no frena a los demás."""
     report = SyncReport()
     for spec in specs:
         try:
             report.results.append(sync_dataset(session, client, spec, full=full))
-        except IndecError as e:
+        except Exception as e:  # noqa: BLE001 — un dataset roto no debe frenar a los demás
             session.rollback()
-            report.errors[spec.slug] = str(e)
+            report.errors[spec.slug] = (
+                str(e) if isinstance(e, IndecError) else f"{type(e).__name__}: {e}"
+            )
     return report

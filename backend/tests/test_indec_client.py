@@ -137,3 +137,11 @@ def test_init_warns_when_token_expires_soon(capsys):
     assert "vence" in out
     assert "5" in out
     assert token not in out
+
+
+def test_fetch_raises_indec_error_on_non_json_body():
+    broken = _resp(None)
+    broken.json.side_effect = ValueError("no es JSON")
+    with patch(HTTPX_GET, return_value=broken):
+        with pytest.raises(IndecError):
+            _client().fetch("ipc_nacional", {}, ORDER)

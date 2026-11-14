@@ -37,7 +37,8 @@ def test_series_requires_dataset(client):
 def test_series_passes_filters_to_query(client):
     url = (
         "/api/v1/indec/series?dataset=ipc_nacional&code=01&region=Nacional"
-        "&indicator=Indice&from=2026-01-01&to=2026-10-01&limit=50"
+        "&indicator=Indice&classifier=COICOP%20Argentina%202019"
+        "&from=2026-01-01&to=2026-10-01&limit=50"
     )
     with patch(GET_SERIES, return_value=[]) as mock_query:
         response = client.get(url)
@@ -48,6 +49,7 @@ def test_series_passes_filters_to_query(client):
     assert kwargs["code"] == "01"
     assert kwargs["region"] == "Nacional"
     assert kwargs["indicator"] == "Indice"
+    assert kwargs["classifier"] == "COICOP Argentina 2019"
     assert kwargs["date_from"] == date(2026, 1, 1)
     assert kwargs["date_to"] == date(2026, 10, 1)
     assert kwargs["limit"] == 50
@@ -61,6 +63,8 @@ def test_series_rejects_limit_above_5000(client):
 def test_series_serializes_observations(client):
     obs = SimpleNamespace(
         dataset="ipc_nacional",
+        classifier="COICOP Argentina 2019",
+        level="División",
         series_code="01",
         series_name="Alimentos y bebidas no alcohólicas",
         region="Nacional",
@@ -76,6 +80,8 @@ def test_series_serializes_observations(client):
     assert response.json() == [
         {
             "dataset": "ipc_nacional",
+            "classifier": "COICOP Argentina 2019",
+            "level": "División",
             "series_code": "01",
             "series_name": "Alimentos y bebidas no alcohólicas",
             "region": "Nacional",

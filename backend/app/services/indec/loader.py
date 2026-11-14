@@ -7,7 +7,7 @@ revisa valores ya publicados: una segunda corrida actualiza en vez de duplicar.
 """
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import literal_column
 from sqlalchemy.dialects.postgresql import insert
@@ -48,18 +48,16 @@ def _parse_period(raw) -> date | None:
         return None
 
 
-def normalize_rows(spec: DatasetSpec, rows: list[dict]) -> list[dict]:
-    """
-    Filas crudas del INDEC -> dicts con las columnas de IndecObservation.
-    Descarta filas sin `valor` o con `periodo` inválido, y deduplica por la
-    clave única conservando la última aparición.
-    """
-    by_key: dict[tuple, dict] = {}
-    for row in rows:
-        period = _parse_period(row.get("periodo"))
-        if period is None or row.get("valor") is None:
-            continue
-        observation = {
+def _to_observation(spec: DatasetSpec, row: dict) -> dict | None:
+    """Una fila cruda -> observación, o None si no es utilizable."""
+    period = _parse_period(row.get("periodo"))
+    if period is None or row.get("valor") is None:
+        return None
+    try:
+        value = Decimal(str(row["valor"]))
+        if not value.is_finite():  # NaN / Infinity romperían el JSON de la API
+            return None
+        return {
             "dataset": spec.slug,
             "classifier": row["clasificador"],
             "level": row["nivel"],
@@ -69,10 +67,42 @@ def normalize_rows(spec: DatasetSpec, rows: list[dict]) -> list[dict]:
             "indicator_type": row["tipo_de_indicador"],
             "unit": row.get("unidad_de_medida"),
             "period": period,
-            "value": Decimal(str(row["valor"])),
+            "value": value,
             "notes": row.get("observaciones"),
         }
-        by_key[tuple(observation[f] for f in _KEY_FIELDS)] = observation
+    except (InvalidOperation, ValueError, KeyError, TypeError):
+        # "s/d", "1,5", columna faltante...: se descarta la fila, no el lote
+        return None
+
+
+def normalize_rows(spec: DatasetSpec, rows: list[dict], *, report: bool = True) -> list[dict]:
+    """
+    Filas crudas del INDEC -> dicts con las columnas de IndecObservation.
+    Descarta filas no utilizables (sin valor, valor no numérico o no finito,
+    período inválido, columnas faltantes) y deduplica por la clave única
+    conservando la última aparición. Con `report=True` informa cuántas filas se
+    descartaron y cuántas eran duplicadas: la clave única no incluye todas las
+    columnas del INDEC, así que un duplicado con valor distinto es una señal.
+    """
+    by_key: dict[tuple, dict] = {}
+    dropped = duplicates = conflicting = 0
+    for row in rows:
+        observation = _to_observation(spec, row)
+        if observation is None:
+            dropped += 1
+            continue
+        key = tuple(observation[f] for f in _KEY_FIELDS)
+        previous = by_key.get(key)
+        if previous is not None:
+            duplicates += 1
+            if previous["value"] != observation["value"]:
+                conflicting += 1
+        by_key[key] = observation
+    if report and (dropped or duplicates):
+        print(
+            f"[indec] {spec.slug}: {dropped} descartadas, {duplicates} duplicadas "
+            f"({conflicting} con valores distintos) de {len(rows)} filas"
+        )
     return list(by_key.values())
 
 

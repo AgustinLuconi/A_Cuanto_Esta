@@ -35,7 +35,7 @@ class IndecObservation(Base):
     classifier = Column(String(120), nullable=False)      # ej. "COICOP Argentina 2019"
     level = Column(String(60), nullable=False)            # ej. "División", "Producto"
     series_code = Column(String(40), nullable=False)      # ej. "01", "CBA"
-    series_name = Column(String(255), nullable=False)     # descripción legible
+    series_name = Column(Text, nullable=False)            # descripción legible (texto libre del INDEC)
 
     # NOT NULL a propósito: en PostgreSQL dos NULL no cuentan como iguales en
     # una restricción única y el upsert duplicaría filas. Los datasets sin
@@ -43,7 +43,7 @@ class IndecObservation(Base):
     region = Column(String(40), nullable=False)
 
     indicator_type = Column(String(60), nullable=False)   # ej. "Indice", "v_m", "v_ia"
-    unit = Column(String(40))                             # ej. "Porcentaje"
+    unit = Column(Text)                                   # ej. "Porcentaje" (texto libre del INDEC)
 
     # Dato
     period = Column(Date, nullable=False)                 # primer día del mes

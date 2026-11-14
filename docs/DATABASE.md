@@ -84,10 +84,10 @@ Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de 
 | classifier | VARCHAR(120) | No | Clasificador (ej: `COICOP Argentina 2019`) |
 | level | VARCHAR(60) | No | Nivel (ej: `Division`, `Producto`) |
 | series_code | VARCHAR(40) | No | Codigo de serie (ej: `01`, `CBA`) |
-| series_name | VARCHAR(255) | No | Descripcion legible |
+| series_name | TEXT | No | Descripcion legible (texto libre del INDEC) |
 | region | VARCHAR(40) | No | Region; los datasets sin region se guardan como `Nacional` |
 | indicator_type | VARCHAR(60) | No | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`... |
-| unit | VARCHAR(40) | Si | Unidad de medida |
+| unit | TEXT | Si | Unidad de medida (texto libre del INDEC) |
 | period | DATE | No | Primer dia del mes del dato |
 | value | NUMERIC(18,4) | No | Valor |
 | notes | TEXT | Si | Observaciones del INDEC |

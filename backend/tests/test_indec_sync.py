@@ -161,3 +161,30 @@ def test_main_returns_0_on_success_and_passes_full_flag():
         assert fetch_indec_data.main(["--full"]) == 0
 
     assert mock_sync.call_args.kwargs["full"] is True
+
+
+def test_empty_slice_raises_even_if_sibling_slice_has_rows():
+    # Un corte vacío no puede quedar tapado por otro con datos
+    client = MagicMock()
+    client.fetch.side_effect = [[_raw()], []]
+    session = MagicMock()
+    with patch(LATEST, return_value=None), patch(UPSERT) as mock_upsert:
+        with pytest.raises(EmptyDatasetError) as exc_info:
+            sync_dataset(session, client, SPEC)
+
+    assert "nivel" in str(exc_info.value)  # nombra el corte que falló
+    mock_upsert.assert_not_called()
+    session.commit.assert_not_called()
+
+
+def test_sync_all_catches_unexpected_exceptions_and_continues():
+    other = DatasetSpec(slug="indice_salarios", slices=({},), has_region=False, order="periodo.asc")
+    client = MagicMock()
+    client.fetch.side_effect = [RuntimeError("inesperado"), [_raw()]]
+    session = MagicMock()
+    with patch(LATEST, return_value=None), patch(UPSERT, return_value=UpsertResult(1, 0)):
+        report = sync_all(session, client, [SPEC, other])
+
+    assert "inesperado" in report.errors["ipc_nacional"]
+    assert [r.dataset for r in report.results] == ["indice_salarios"]
+    session.rollback.assert_called()

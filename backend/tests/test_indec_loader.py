@@ -131,3 +131,52 @@ def test_upsert_statement_targets_unique_constraint_and_returns_insert_flag():
     sql = str(stmt.compile(dialect=postgresql.dialect()))
     assert "ON CONFLICT ON CONSTRAINT uq_indec_observation_key DO UPDATE" in sql
     assert "xmax = 0" in sql
+
+
+def test_normalize_drops_non_numeric_value_rows():
+    # Un valor como "s/d" o "1,5" no debe tirar abajo todo el lote
+    rows = [_ipc_row(valor=v, periodo=f"2026{m:02d}") for m, v in enumerate(["s/d", "", "1,5"], start=1)]
+    rows.append(_ipc_row(valor=3.3, periodo="202604"))
+
+    result = normalize_rows(IPC, rows)
+
+    assert [o["period"] for o in result] == [date(2026, 4, 1)]
+
+
+def test_normalize_drops_non_finite_values():
+    rows = [
+        _ipc_row(valor="NaN", periodo="202601"),
+        _ipc_row(valor="Infinity", periodo="202602"),
+        _ipc_row(valor=float("nan"), periodo="202603"),
+        _ipc_row(valor=1.0, periodo="202604"),
+    ]
+
+    result = normalize_rows(IPC, rows)
+
+    assert [o["period"] for o in result] == [date(2026, 4, 1)]
+
+
+def test_normalize_drops_rows_missing_required_columns():
+    broken = _ipc_row()
+    del broken["codigo"]
+
+    assert normalize_rows(IPC, [broken, _ipc_row(periodo="202609")]) == normalize_rows(
+        IPC, [_ipc_row(periodo="202609")]
+    )
+
+
+def test_normalize_reports_dropped_rows_and_conflicting_duplicates(capsys):
+    rows = [
+        _ipc_row(valor=None, periodo="202601"),                     # descartada
+        _ipc_row(valor=1.0, periodo="202602"),
+        _ipc_row(valor=2.0, periodo="202602"),                      # duplicada con otro valor
+        _ipc_row(valor=5.0, periodo="202603"),
+        _ipc_row(valor=5.0, periodo="202603"),                      # duplicada idéntica
+    ]
+
+    normalize_rows(IPC, rows)
+
+    out = capsys.readouterr().out
+    assert "1 descartadas" in out
+    assert "2 duplicadas" in out
+    assert "1 con valores distintos" in out

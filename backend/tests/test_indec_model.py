@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Text, UniqueConstraint
 
 from app.models.indec_observation import IndecObservation
 
@@ -43,3 +43,10 @@ def test_unique_constraint_covers_full_key():
 
 def test_ingested_at_is_timezone_aware():
     assert TABLE.c.ingested_at.type.timezone is True
+
+
+def test_free_text_columns_are_unbounded():
+    # series_name y unit vienen de texto libre del INDEC: un VARCHAR corto
+    # rechazaría todo el dataset ante un valor más largo de lo previsto.
+    assert isinstance(TABLE.c.series_name.type, Text)
+    assert isinstance(TABLE.c.unit.type, Text)

@@ -8,6 +8,8 @@ class ObservationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     dataset: str
+    classifier: str
+    level: str
     series_code: str
     series_name: str
     region: str

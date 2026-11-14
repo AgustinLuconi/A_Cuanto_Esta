@@ -111,10 +111,11 @@ Observaciones de un dataset, ordenadas por periodo ascendente.
 | code | string | - | Codigo de serie (ej: `0` Nivel general, `01` Alimentos, `CBA`) |
 | region | string | - | `Nacional`, `GBA` (salarios se guarda como `Nacional`) |
 | indicator | string | - | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`, `CBA`, `CBT`, `ICE` |
+| classifier | string | - | Clasificador (ej: `IPC`, `COICOP Argentina 2019`, `CBA y CBT`, `IS 2001`) |
 | from / to | date | - | Rango de periodos (`YYYY-MM-DD`, primer dia del mes) |
 | limit | int | 1000 | 1-5000 |
 
-Respuesta: lista de `{dataset, series_code, series_name, region, indicator_type, unit, period, value}`.
+Respuesta: lista de `{dataset, classifier, level, series_code, series_name, region, indicator_type, unit, period, value}`.
 
 ### GET /indec/overview
 
