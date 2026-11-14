@@ -73,6 +73,32 @@ Indicadores macroeconomicos de Argentina.
 
 **Fuentes:** `argentina_datos`, `datos_gob_ar`, `dolarapi`
 
+### indec_observations
+
+Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de indicador y periodo. Independiente de `economic_indicators` (que no tiene lugar para region, nivel ni tipo de indicador). La carga es upsert porque el INDEC revisa valores ya publicados.
+
+| Columna | Tipo | Nullable | Descripcion |
+|---|---|---|---|
+| id | UUID | PK | Identificador unico |
+| dataset | VARCHAR(80) | No | Slug del dataset (ej: `ipc_nacional`) |
+| classifier | VARCHAR(120) | No | Clasificador (ej: `COICOP Argentina 2019`) |
+| level | VARCHAR(60) | No | Nivel (ej: `Division`, `Producto`) |
+| series_code | VARCHAR(40) | No | Codigo de serie (ej: `01`, `CBA`) |
+| series_name | VARCHAR(255) | No | Descripcion legible |
+| region | VARCHAR(40) | No | Region; los datasets sin region se guardan como `Nacional` |
+| indicator_type | VARCHAR(60) | No | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`... |
+| unit | VARCHAR(40) | Si | Unidad de medida |
+| period | DATE | No | Primer dia del mes del dato |
+| value | NUMERIC(18,4) | No | Valor |
+| notes | TEXT | Si | Observaciones del INDEC |
+| ingested_at | TIMESTAMPTZ | No | Cuando se cargo o actualizo |
+
+**Unicidad:** `uq_indec_observation_key` sobre `(dataset, classifier, level, series_code, region, indicator_type, period)`. `region` es NOT NULL a proposito: en PostgreSQL dos `NULL` no cuentan como iguales y el upsert duplicaria filas.
+
+**Indice de lectura:** `ix_indec_observation_lookup` sobre `(dataset, series_code, region, indicator_type, period)`.
+
+**Datasets y cortes** (se definen en `backend/app/services/indec/registry.py`): `ipc_nacional`, `valorizacion_canastas_cba_cbt`, `indice_salarios`.
+
 ## Enums
 
 ### Supermarket

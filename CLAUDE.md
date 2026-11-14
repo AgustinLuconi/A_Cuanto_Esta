@@ -60,6 +60,7 @@ APIs externas (ArgentinaDatos, Datos.gob.ar)
 - **`schemas/`** — Schemas Pydantic para validación de request/response.
 - **`scrapers/`** — Un scraper por supermercado. Producen datos normalizados con la misma estructura.
 - **`services/`** — Lógica de negocio: comparación de precios, integración con APIs económicas, lógica de análisis.
+  - `services/indec/` — Ingesta de datos oficiales del INDEC: `client.py` (API paginada con token Bearer `INDEC_API_TOKEN`), `registry.py` (qué datasets y cortes se guardan: **acá se suma un dataset nuevo**), `loader.py` (upsert), `sync.py` (orquestador, usado por `scripts/fetch_indec_data.py` y el workflow `indec-sync`), `queries.py` (lectura para `/api/v1/indec`). El token vence el 2027-05-13.
 - **`config/`** — Settings via Pydantic BaseSettings leyendo desde `.env`.
 - **`utils/`** — Helpers reutilizables (normalización de nombres de productos, etc).
 

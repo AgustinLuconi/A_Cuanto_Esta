@@ -97,6 +97,33 @@ Historial de inflacion.
 
 ---
 
+## INDEC
+
+Datos oficiales del INDEC, guardados en la base propia (`indec_observations`). Se sincronizan a diario con el workflow `indec-sync`. Si el INDEC cae, estos endpoints siguen respondiendo con lo ya guardado.
+
+### GET /indec/series
+
+Observaciones de un dataset, ordenadas por periodo ascendente.
+
+| Parametro | Tipo | Default | Descripcion |
+|---|---|---|---|
+| dataset | string | (obligatorio) | Slug: `ipc_nacional`, `valorizacion_canastas_cba_cbt`, `indice_salarios` |
+| code | string | - | Codigo de serie (ej: `0` Nivel general, `01` Alimentos, `CBA`) |
+| region | string | - | `Nacional`, `GBA` (salarios se guarda como `Nacional`) |
+| indicator | string | - | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`, `CBA`, `CBT`, `ICE` |
+| from / to | date | - | Rango de periodos (`YYYY-MM-DD`, primer dia del mes) |
+| limit | int | 1000 | 1-5000 |
+
+Respuesta: lista de `{dataset, series_code, series_name, region, indicator_type, unit, period, value}`.
+
+### GET /indec/overview
+
+Ultimo valor de las series de la pantalla de economia. Cada campo es `{period, value}` o `null` si no hay datos: `ipc_general_mensual`, `ipc_general_interanual`, `ipc_alimentos_mensual`, `ipc_alimentos_interanual`, `cba`, `cbt`, `ice`.
+
+Ademas `food_vs_wages`: `{labels, ipc_alimentos, salarios}` con IPC Alimentos vs. indice de salarios, ambos en base 100 desde el primer periodo comun (ultimos 24 meses), o `null`.
+
+---
+
 ## Analysis
 
 ### GET /analysis/price-vs-inflation
