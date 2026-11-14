@@ -140,3 +140,53 @@ def test_build_food_vs_wages_returns_none_when_a_base_value_is_zero():
     wages = {date(2026, 1, 1): 50.0, date(2026, 2, 1): 55.0}
 
     assert build_food_vs_wages(ipc, wages) is None
+
+
+# ---------------------------------------------------------------------------
+# GET /indec/price-reference
+# ---------------------------------------------------------------------------
+from app.services.indec.price_reference import ReferenceItem
+
+GET_PRICE_REFERENCE = "app.services.indec.price_reference_queries.get_price_reference"
+
+
+def _reference_item(**overrides):
+    base = dict(
+        code="01.1.8.1.01", label="Azúcar", reference_unit="kg", indec_period=date(2026, 10, 1),
+        indec_price=Decimal("1608.23"), ours_median=Decimal("1500"), ours_p25=Decimal("1300"),
+        ours_p75=Decimal("1700"), diff_pct=Decimal("-0.0674"), n_offers=31, n_products=15,
+        n_supermarkets=8,
+    )
+    base.update(overrides)
+    return ReferenceItem(**base)
+
+
+def test_price_reference_serializes_items(client):
+    with patch(GET_PRICE_REFERENCE, return_value=[_reference_item()]):
+        response = client.get("/api/v1/indec/price-reference")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "code": "01.1.8.1.01",
+            "label": "Azúcar",
+            "reference_unit": "kg",
+            "indec_period": "2026-10-01",
+            "indec_price": 1608.23,
+            "ours_median": 1500.0,
+            "ours_p25": 1300.0,
+            "ours_p75": 1700.0,
+            "diff_pct": -0.0674,
+            "n_offers": 31,
+            "n_products": 15,
+            "n_supermarkets": 8,
+        }
+    ]
+
+
+def test_price_reference_with_no_data_returns_empty_list_not_error(client):
+    with patch(GET_PRICE_REFERENCE, return_value=[]):
+        response = client.get("/api/v1/indec/price-reference")
+
+    assert response.status_code == 200
+    assert response.json() == []

@@ -3,6 +3,7 @@ Endpoints de datos oficiales del INDEC (leen de la base propia).
 
 GET /api/v1/indec/series   — Series filtradas por dataset/código/región/indicador
 GET /api/v1/indec/overview — Último valor de las series de la pantalla de economía
+GET /api/v1/indec/price-reference — Precios promedio del INDEC vs. nuestros supermercados
 """
 from datetime import date
 
@@ -10,8 +11,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.schemas.indec import IndecOverview, ObservationOut
-from app.services.indec import queries
+from app.schemas.indec import IndecOverview, ObservationOut, PriceReferenceItemOut
+from app.services.indec import price_reference_queries, queries
 
 router = APIRouter()
 
@@ -44,3 +45,13 @@ def get_indec_series(
 @router.get("/overview", response_model=IndecOverview)
 def get_indec_overview(db: Session = Depends(get_db)):
     return queries.get_overview(db)
+
+
+@router.get("/price-reference", response_model=list[PriceReferenceItemOut])
+def get_indec_price_reference(db: Session = Depends(get_db)):
+    """
+    Precio promedio oficial del INDEC (GBA) contra la mediana de los productos
+    equivalentes de nuestros supermercados, por artículo. Solo incluye los artículos
+    con suficientes ofertas frescas; con datos insuficientes devuelve una lista vacía.
+    """
+    return price_reference_queries.get_price_reference(db)

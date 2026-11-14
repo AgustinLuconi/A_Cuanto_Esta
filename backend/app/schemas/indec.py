@@ -47,3 +47,22 @@ class IndecOverview(BaseModel):
     cbt: LatestPoint | None = None
     ice: LatestPoint | None = None
     food_vs_wages: FoodVsWages | None = None
+
+
+class PriceReferenceItemOut(BaseModel):
+    """Un artículo del cruce INDEC vs. supermercados, todo en el tamaño de referencia del INDEC."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    code: str
+    label: str
+    reference_unit: str  # "kg", "500 g", "1,5 litros"
+    indec_period: date
+    indec_price: float
+    ours_median: float
+    ours_p25: float  # la mitad central de los productos va de p25 a p75
+    ours_p75: float
+    diff_pct: float  # 0.1 = nuestros supermercados un 10% más caros que el INDEC
+    n_offers: int
+    n_products: int
+    n_supermarkets: int
