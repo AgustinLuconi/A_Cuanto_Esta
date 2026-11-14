@@ -27,9 +27,10 @@ class EconomicDataProcessor:
     def save_inflation_data(
         self, records: list[InflationRecord], indicator_type: IndicatorType
     ) -> int:
+        existing = self._existing_dates(indicator_type)
         saved = 0
         for record in records:
-            if self._exists(indicator_type, record.fecha):
+            if record.fecha in existing:
                 continue
             self.session.add(
                 EconomicIndicator(
@@ -39,6 +40,7 @@ class EconomicDataProcessor:
                     source=DataSource.ARGENTINADATOS,
                 )
             )
+            existing.add(record.fecha)
             saved += 1
         self.session.commit()
         return saved
@@ -46,9 +48,10 @@ class EconomicDataProcessor:
     def save_dollar_data(
         self, records: list[DollarRecord], indicator_type: IndicatorType
     ) -> int:
+        existing = self._existing_dates(indicator_type)
         saved = 0
         for record in records:
-            if self._exists(indicator_type, record.fecha):
+            if record.fecha in existing:
                 continue
             self.session.add(
                 EconomicIndicator(
@@ -59,6 +62,7 @@ class EconomicDataProcessor:
                     metadata_json=json.dumps({"compra": record.compra}),
                 )
             )
+            existing.add(record.fecha)
             saved += 1
         self.session.commit()
         return saved
@@ -154,9 +158,10 @@ class EconomicDataProcessor:
         return saved
 
     def save_uva_data(self, records: list[UVARecord]) -> int:
+        existing = self._existing_dates(IndicatorType.UVA_INDEX)
         saved = 0
         for record in records:
-            if self._exists(IndicatorType.UVA_INDEX, record.fecha):
+            if record.fecha in existing:
                 continue
             self.session.add(
                 EconomicIndicator(
@@ -166,6 +171,7 @@ class EconomicDataProcessor:
                     source=DataSource.ARGENTINADATOS,
                 )
             )
+            existing.add(record.fecha)
             saved += 1
         self.session.commit()
         return saved

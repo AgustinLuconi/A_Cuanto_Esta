@@ -30,13 +30,23 @@ def _mock_session_with_exists_sequence(existing_sequence):
     return session
 
 
+def _mock_session_with_existing_dates(dates):
+    """
+    Mockea la consulta única de fechas existentes que usan los save_* masivos:
+    session.query(col).filter(...).all() -> [(fecha,), ...].
+    """
+    session = MagicMock()
+    session.query.return_value.filter.return_value.all.return_value = [(d,) for d in dates]
+    return session
+
+
 def test_save_inflation_data_skips_existing_record_and_saves_new_one():
     # Arrange: primer registro ya existe en DB, segundo es nuevo
     records = [
         InflationRecord(fecha=date(2026, 1, 1), valor=4.2),
         InflationRecord(fecha=date(2026, 2, 1), valor=3.8),
     ]
-    session = _mock_session_with_exists_sequence([object(), None])
+    session = _mock_session_with_existing_dates([date(2026, 1, 1)])
     processor = EconomicDataProcessor(session)
 
     # Act
@@ -57,7 +67,7 @@ def test_save_inflation_data_commits_once_regardless_of_record_count():
         InflationRecord(fecha=date(2026, 2, 1), valor=2.0),
         InflationRecord(fecha=date(2026, 3, 1), valor=3.0),
     ]
-    session = _mock_session_with_exists_sequence([None, None, None])
+    session = _mock_session_with_existing_dates([])
     processor = EconomicDataProcessor(session)
 
     # Act
@@ -166,11 +176,30 @@ def test_save_uva_data_skips_existing_and_saves_new():
         UVARecord(fecha=date(2026, 1, 1), valor=1500.0),
         UVARecord(fecha=date(2026, 1, 2), valor=1501.5),
     ]
-    session = _mock_session_with_exists_sequence([object(), None])
+    session = _mock_session_with_existing_dates([date(2026, 1, 1)])
     processor = EconomicDataProcessor(session)
 
     saved = processor.save_uva_data(records)
 
+    # Una sola consulta de fechas existentes, no una por registro
+    assert session.query.call_count == 1
     assert saved == 1
     added = session.add.call_args[0][0]
     assert added.date == date(2026, 1, 2)
+
+
+def test_save_inflation_data_does_one_query_and_dedups_within_batch():
+    # Regresión: antes hacía un SELECT por fila (miles de round-trips a Neon
+    # desde GitHub Actions -> el job de inflación rozaba el timeout de 15 min).
+    records = [
+        InflationRecord(fecha=date(2026, 1, 1), valor=1.0),
+        InflationRecord(fecha=date(2026, 1, 1), valor=1.0),  # duplicado en el lote
+        InflationRecord(fecha=date(2026, 2, 1), valor=2.0),
+    ]
+    session = _mock_session_with_existing_dates([])
+    processor = EconomicDataProcessor(session)
+
+    saved = processor.save_inflation_data(records, IndicatorType.INFLATION_MONTHLY)
+
+    assert session.query.call_count == 1
+    assert saved == 2
