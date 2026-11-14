@@ -135,6 +135,7 @@ export default function IndecSection() {
             aColor="var(--bad)"
             bColor="var(--primary)"
             height={260}
+            valueFmt={(v) => v.toFixed(0)}  // índice base 100, no pesos
           />
         </div>
       )}

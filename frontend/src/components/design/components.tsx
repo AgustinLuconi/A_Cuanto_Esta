@@ -410,7 +410,7 @@ export function BarChart({ data, height = 240, color = "var(--primary)", valueFm
 // ============================================================================
 // Dual line chart (dolar blue vs oficial)
 // ============================================================================
-export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, height = 280 }: {
+export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, height = 280, valueFmt = (v: number) => "$" + fmtPrice(v) }: {
   labels: string[];
   a: number[];
   b: number[];
@@ -419,6 +419,8 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
   aColor: string;
   bColor: string;
   height?: number;
+  /** Formato de los valores (ejes, etiquetas finales y tooltip). Por defecto, pesos. */
+  valueFmt?: (v: number) => string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -473,7 +475,7 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
             <line x1={pad.l} x2={width - pad.r} y1={yAt(v)} y2={yAt(v)}
               stroke="var(--border)" strokeDasharray={i === 0 ? "0" : "2 4"}/>
             <text x={pad.l - 8} y={yAt(v)} textAnchor="end" dominantBaseline="central"
-              fill="var(--fg-3)" fontSize="10" fontFamily="var(--font-mono)">${fmtPrice(v)}</text>
+              fill="var(--fg-3)" fontSize="10" fontFamily="var(--font-mono)">{valueFmt(v)}</text>
           </g>
         ))}
         {labels.map((l, i) => i % xStep === 0 ? (
@@ -491,10 +493,10 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
             <g>
               <circle cx={xAt(a.length-1)} cy={yAt(lastValA)} r="4" fill={aColor}/>
               <text x={xAt(a.length-1)+10} y={yAt(lastValA)} dominantBaseline="central"
-                fill={aColor} fontSize="11" fontWeight="600">${fmtPrice(lastValA)}</text>
+                fill={aColor} fontSize="11" fontWeight="600">{valueFmt(lastValA)}</text>
               <circle cx={xAt(b.length-1)} cy={yAt(lastValB)} r="4" fill={bColor}/>
               <text x={xAt(b.length-1)+10} y={yAt(lastValB)} dominantBaseline="central"
-                fill={bColor} fontSize="11" fontWeight="600">${fmtPrice(lastValB)}</text>
+                fill={bColor} fontSize="11" fontWeight="600">{valueFmt(lastValB)}</text>
             </g>
           );
         })()}
@@ -511,11 +513,11 @@ export function DualLineChart({ labels, a, b, aLabel, bLabel, aColor, bColor, he
           <div style={{ fontWeight: 700, marginBottom: 4 }}>{labels[hover.idx]}</div>
           <div className="ct-row" style={{ justifyContent: "space-between", gap: 12 }}>
             <span style={{ display:"flex", alignItems:"center", gap: 5 }}><span className="ct-dot" style={{ background: aColor }}/>{aLabel}</span>
-            <span className="mono">${fmtPrice(a[hover.idx] ?? 0)}</span>
+            <span className="mono">{valueFmt(a[hover.idx] ?? 0)}</span>
           </div>
           <div className="ct-row" style={{ justifyContent: "space-between", gap: 12 }}>
             <span style={{ display:"flex", alignItems:"center", gap: 5 }}><span className="ct-dot" style={{ background: bColor }}/>{bLabel}</span>
-            <span className="mono">${fmtPrice(b[hover.idx] ?? 0)}</span>
+            <span className="mono">{valueFmt(b[hover.idx] ?? 0)}</span>
           </div>
         </div>
       )}
