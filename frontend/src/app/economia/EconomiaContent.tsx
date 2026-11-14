@@ -6,6 +6,7 @@ import { getEconomicContext, getInflationHistory, getDollarHistory, getRiskCount
 import { BarChart, DualLineChart, VarBadge, Sparkline, fmtPrice, fmtPct, Icon } from "@/components/design/components";
 import { ChangeBadge } from "@/components/layout/EconomicSidebar";
 import { CATEGORIES_DESIGN } from "@/lib/categoryMap";
+import IndecSection from "./IndecSection";
 
 export default function EconomiaContent() {
   const { data: eco, isError: ecoIsError } = useQuery({
@@ -196,6 +197,9 @@ export default function EconomiaContent() {
           />
         </div>
       </div>
+
+      {/* DATOS OFICIALES DEL INDEC */}
+      <IndecSection />
 
       {/* TODOS LOS DÓLARES */}
       <div className="card" style={{ padding: 22, marginBottom: 22 }}>

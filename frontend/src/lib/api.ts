@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import {
   EconomicContextSchema,
   EconomicIndicatorSchema,
+  IndecOverviewSchema,
   PriceHistoryRecordSchema,
   PriceIndexSchema,
   PriceInflationAnalysisSchema,
@@ -14,6 +15,7 @@ import {
   DiscountCheckSchema,
   PriceAlertApiSchema,
   type EconomicContext,
+  type IndecOverview,
   type PriceHistoryRecord,
   type PriceIndex,
   type PriceInflationAnalysis,
@@ -131,6 +133,11 @@ export async function getPriceHistory(
 export async function getEconomicContext(): Promise<EconomicContext> {
   const { data } = await api.get("/economic/context");
   return EconomicContextSchema.parse(data);
+}
+
+export async function getIndecOverview(): Promise<IndecOverview> {
+  const { data } = await api.get("/indec/overview");
+  return IndecOverviewSchema.parse(data);
 }
 
 export async function getInflationHistory(

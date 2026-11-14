@@ -126,6 +126,33 @@ export const EconomicContextSchema = z.object({
 });
 export type EconomicContext = z.infer<typeof EconomicContextSchema>;
 
+export const LatestPointSchema = z.object({
+  period: z.string(),
+  value: z.number(),
+});
+export type LatestPoint = z.infer<typeof LatestPointSchema>;
+
+export const FoodVsWagesSchema = z.object({
+  labels: z.array(z.string()),
+  ipc_alimentos: z.array(z.number()),
+  salarios: z.array(z.number()),
+});
+export type FoodVsWages = z.infer<typeof FoodVsWagesSchema>;
+
+// Datos oficiales del INDEC (GET /indec/overview). Todo es opcional: con la
+// tabla vacía el backend responde null en cada campo.
+export const IndecOverviewSchema = z.object({
+  ipc_general_mensual: LatestPointSchema.nullable().default(null),
+  ipc_general_interanual: LatestPointSchema.nullable().default(null),
+  ipc_alimentos_mensual: LatestPointSchema.nullable().default(null),
+  ipc_alimentos_interanual: LatestPointSchema.nullable().default(null),
+  cba: LatestPointSchema.nullable().default(null),
+  cbt: LatestPointSchema.nullable().default(null),
+  ice: LatestPointSchema.nullable().default(null),
+  food_vs_wages: FoodVsWagesSchema.nullable().default(null),
+});
+export type IndecOverview = z.infer<typeof IndecOverviewSchema>;
+
 export const EconomicIndicatorSchema = z.object({
   id: z.string(),
   indicator_type: z.string(),
