@@ -1,0 +1,133 @@
+"""
+Pruebas del cargador de observaciones del INDEC: normalización de filas crudas
+y upsert idempotente. La sesión de SQLAlchemy se mockea; no se toca la base.
+"""
+from datetime import date
+from decimal import Decimal
+from unittest.mock import MagicMock
+
+from sqlalchemy.dialects import postgresql
+
+from app.services.indec.loader import UpsertResult, normalize_rows, upsert_observations
+from app.services.indec.registry import REGISTRY
+
+IPC = REGISTRY["ipc_nacional"]
+SALARIOS = REGISTRY["indice_salarios"]
+
+
+def _ipc_row(**overrides):
+    row = {
+        "clasificador": "COICOP Argentina 2019",
+        "nivel": "División",
+        "codigo": "01",
+        "descripcion": "Alimentos y bebidas no alcohólicas",
+        "periodo": "202610",
+        "tipo_de_indicador": "v_m",
+        "region": "Nacional",
+        "unidad_de_medida": "Porcentaje",
+        "valor": 2.1,
+        "observaciones": None,
+    }
+    row.update(overrides)
+    return row
+
+
+def _obs(i):
+    """Observación ya normalizada, con clave distinta por `i`."""
+    return {
+        "dataset": "ipc_nacional",
+        "classifier": "IPC",
+        "level": "Nivel General",
+        "series_code": str(i),
+        "series_name": "x",
+        "region": "Nacional",
+        "indicator_type": "v_m",
+        "unit": "Porcentaje",
+        "period": date(2026, 10, 1),
+        "value": Decimal("1.0"),
+        "notes": None,
+    }
+
+
+def test_normalize_maps_fields_and_parses_period():
+    [obs] = normalize_rows(IPC, [_ipc_row()])
+
+    assert obs["dataset"] == "ipc_nacional"
+    assert obs["classifier"] == "COICOP Argentina 2019"
+    assert obs["level"] == "División"
+    assert obs["series_code"] == "01"
+    assert obs["series_name"] == "Alimentos y bebidas no alcohólicas"
+    assert obs["indicator_type"] == "v_m"
+    assert obs["unit"] == "Porcentaje"
+    assert obs["region"] == "Nacional"
+    assert obs["period"] == date(2026, 10, 1)
+    assert obs["value"] == Decimal("2.1")
+
+
+def test_normalize_forces_region_nacional_when_dataset_has_no_region():
+    row = _ipc_row(clasificador="IS 2001", nivel="0", codigo="0", tipo_de_indicador="Indice")
+    del row["region"]
+
+    [obs] = normalize_rows(SALARIOS, [row])
+
+    assert obs["region"] == "Nacional"
+
+
+def test_normalize_drops_null_value_rows():
+    rows = [_ipc_row(valor=None), _ipc_row(periodo="202609", valor=1.9)]
+
+    result = normalize_rows(IPC, rows)
+
+    assert [o["period"] for o in result] == [date(2026, 9, 1)]
+
+
+def test_normalize_drops_invalid_period_rows():
+    rows = [_ipc_row(periodo=p) for p in ("2026", "abcdef", None, "202613")]
+
+    assert normalize_rows(IPC, rows) == []
+
+
+def test_normalize_dedups_same_key_keeping_last():
+    # PostgreSQL falla con "cannot affect row a second time" si el mismo lote
+    # trae dos filas con la misma clave única.
+    rows = [_ipc_row(valor=1.0), _ipc_row(valor=2.0)]
+
+    [obs] = normalize_rows(IPC, rows)
+
+    assert obs["value"] == Decimal("2.0")
+
+
+def test_upsert_executes_one_statement_per_batch():
+    session = MagicMock()
+
+    upsert_observations(session, [_obs(i) for i in range(2500)], batch_size=1000)
+
+    assert session.execute.call_count == 3
+    session.commit.assert_not_called()
+
+
+def test_upsert_counts_inserted_and_updated():
+    session = MagicMock()
+    session.execute.return_value.all.return_value = [(True,), (False,), (True,)]
+
+    result = upsert_observations(session, [_obs(i) for i in range(3)])
+
+    assert result == UpsertResult(inserted=2, updated=1)
+
+
+def test_upsert_with_empty_rows_does_nothing():
+    session = MagicMock()
+
+    assert upsert_observations(session, []) == UpsertResult(inserted=0, updated=0)
+    session.execute.assert_not_called()
+
+
+def test_upsert_statement_targets_unique_constraint_and_returns_insert_flag():
+    session = MagicMock()
+
+    upsert_observations(session, [_obs(1)])
+
+    stmt = session.execute.call_args[0][0]
+    sql = str(stmt.compile(dialect=postgresql.dialect()))
+    assert "ON CONFLICT ON CONSTRAINT uq_indec_observation_key DO UPDATE" in sql
+    assert "xmax = 0" in sql
