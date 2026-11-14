@@ -7,6 +7,7 @@ from app.models.economic_indicator import EconomicIndicator, IndicatorType, Data
 from app.models.product_alias import ProductAlias, MatchType
 from app.models.push_subscription import PushSubscription
 from app.models.price_alert import PriceAlert
+from app.models.indec_observation import IndecObservation
 
 __all__ = [
     "Product",
@@ -21,4 +22,5 @@ __all__ = [
     "MatchType",
     "PushSubscription",
     "PriceAlert",
+    "IndecObservation",
 ]

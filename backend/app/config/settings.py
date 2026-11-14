@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     DOLAR_API_URL: str = "https://dolarapi.com"
     DATOS_GOB_AR_API_URL: str = "https://apis.datos.gob.ar/series/api"
 
+    # INDEC (https://api.indec.gob.ar) — datos oficiales. El token es Bearer
+    # y se pide en la web del INDEC; sin él los datos devuelven 401.
+    INDEC_API_URL: str = "https://api.indec.gob.ar"
+    INDEC_API_TOKEN: Optional[str] = None
+
     # Coto Digital (Constructor.io)
     COTO_BASE_URL: str = "https://www.cotodigital.com.ar"
     CONSTRUCTOR_API_URL: str = "https://ac.cnstrc.com"
