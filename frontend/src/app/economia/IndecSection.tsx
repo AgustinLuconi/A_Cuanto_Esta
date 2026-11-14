@@ -60,13 +60,22 @@ export default function IndecSection() {
   // Si falla o la base todavía no tiene datos, no se muestra nada: la página
   // de economía no debe mostrar un error por una sección complementaria.
   if (isError || !data) return null;
-  const hasAnyData = Object.values(data).some((v) => v !== null);
-  if (!hasAnyData) return null;
 
   const foodAnnual = data.ipc_alimentos_interanual;
   const foodMonthly = data.ipc_alimentos_mensual;
   const generalAnnual = data.ipc_general_interanual;
   const generalMonthly = data.ipc_general_mensual;
+
+  // Solo cuenta lo que esta sección realmente muestra: con únicamente un dato
+  // que no se dibuja (ej. solo el ICE), quedaría el encabezado sobre un hueco.
+  const hasCards = Boolean(foodAnnual || generalAnnual || data.cba || data.cbt);
+  if (!hasCards && !data.food_vs_wages) return null;
+
+  // ICE = inversa del coeficiente de Engel: cuántas veces la canasta total
+  // contiene a la alimentaria (2,22 -> la total vale 2,22 veces la CBA).
+  const iceDetail = data.ice
+    ? `${data.ice.value.toFixed(2).replace(".", ",")}× la canasta alimentaria`
+    : undefined;
 
   return (
     <div style={{ marginBottom: 22 }}>
@@ -106,7 +115,7 @@ export default function IndecSection() {
           <StatCard
             label="Canasta Básica Total"
             main={"$" + fmtPrice(data.cbt.value)}
-            detail="por adulto equivalente · GBA"
+            detail={iceDetail ? `${iceDetail} · GBA` : "por adulto equivalente · GBA"}
             period={fmtPeriod(data.cbt.period)}
           />
         )}
