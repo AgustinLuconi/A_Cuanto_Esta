@@ -4,7 +4,7 @@ Agrupa todos los routers de endpoints.
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import analysis, economic, prices, products, push, supermarkets
+from app.api.v1.endpoints import analysis, economic, indec, prices, products, push, supermarkets
 
 api_router = APIRouter()
 api_router.include_router(products.router, prefix="/products", tags=["products"])
@@ -12,4 +12,5 @@ api_router.include_router(push.router, prefix="/push", tags=["push"])
 api_router.include_router(prices.router, tags=["prices"])
 api_router.include_router(economic.router, prefix="/economic", tags=["economic"])
 api_router.include_router(analysis.router, prefix="/analysis", tags=["analysis"])
+api_router.include_router(indec.router, prefix="/indec", tags=["indec"])
 api_router.include_router(supermarkets.router, tags=["supermarkets"])
