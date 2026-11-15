@@ -36,6 +36,7 @@ def test_unique_constraint_covers_full_key():
         "level",
         "series_code",
         "region",
+        "indicator",
         "indicator_type",
         "period",
     }
@@ -57,3 +58,9 @@ def test_indicator_description_is_nullable_text():
     assert "indicator_description" in TABLE.c
     assert TABLE.c.indicator_description.nullable
     assert isinstance(TABLE.c.indicator_description.type, Text)
+
+
+def test_indicator_is_not_nullable_and_defaults_to_empty():
+    # Parte de la clave única: NULL rompería la unicidad (dos NULL no son iguales)
+    assert not TABLE.c.indicator.nullable
+    assert TABLE.c.indicator.server_default is not None

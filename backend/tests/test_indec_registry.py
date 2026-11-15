@@ -9,6 +9,8 @@ def test_registry_has_the_three_v1_datasets():
         "ipc_nacional",
         "valorizacion_canastas_cba_cbt",
         "indice_salarios",
+        "canasta-crianza",
+        "sipm_precios_mayoristas",
     }
 
 
@@ -55,3 +57,29 @@ def test_every_slice_value_is_a_postgrest_filter():
         for slice_ in spec.slices:
             for value in slice_.values():
                 assert value.startswith(("eq.", "in.("))
+
+
+def test_dataset_spec_defaults_keep_the_standard_columns():
+    spec = REGISTRY["ipc_nacional"]
+    assert spec.code_column == "codigo"
+    assert spec.period_column == "periodo"
+    assert spec.indicator_column is None
+    assert spec.reshape is None
+
+
+def test_mayorista_spec_uses_its_own_columns_and_indicador():
+    spec = REGISTRY["sipm_precios_mayoristas"]
+    assert spec.code_column == "codigo_apertura"
+    assert spec.indicator_column == "indicador"   # IPP / IPIB / IPIM comparten códigos
+    assert spec.has_region is True
+    assert "indicador.asc" in spec.order
+    # solo el indicador de precios mayoristas (IPIM), nunca los tres
+    assert all(slice_["indicador"] == "eq.IPIM" for slice_ in spec.slices)
+
+
+def test_crianza_spec_reshapes_wide_rows_and_uses_capitalized_period():
+    spec = REGISTRY["canasta-crianza"]
+    assert spec.reshape is not None
+    assert spec.period_column == "Periodo"   # este dataset usa mayúscula
+    assert spec.order == "Periodo.asc"
+    assert spec.has_region is False

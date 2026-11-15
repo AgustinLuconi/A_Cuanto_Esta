@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from sqlalchemy.dialects import postgresql
 
 from app.services.indec.loader import UpsertResult, normalize_rows, upsert_observations
-from app.services.indec.registry import REGISTRY
+from app.services.indec.registry import REGISTRY, DatasetSpec
 
 IPC = REGISTRY["ipc_nacional"]
 SALARIOS = REGISTRY["indice_salarios"]
@@ -43,6 +43,7 @@ def _obs(i):
         "region": "Nacional",
         "indicator_type": "v_m",
         "unit": "Porcentaje",
+        "indicator": "",
         "indicator_description": None,
         "period": date(2026, 10, 1),
         "value": Decimal("1.0"),
@@ -229,3 +230,65 @@ def test_upsert_updates_rows_whose_description_changed():
     sql = str(session.execute.call_args[0][0].compile(dialect=postgresql.dialect()))
     assert "indicator_description IS DISTINCT FROM" in sql
     assert "indicator_description=excluded.indicator_description" in sql.replace(" ", "")
+
+
+def _mayorista_row(**overrides):
+    row = {
+        "indicador": "IPIM", "clasificador": "CIIU3", "nivel": "División",
+        "codigo_apertura": "15", "descripcion": "Alimentos y bebidas", "periodo": "202609",
+        "tipo_de_indicador": "Indice", "tipo_de_indicador_descripcion": "Nivel del período, base dic-15=100",
+        "region": "Total del país", "unidad_de_medida": "Unidad", "valor": 250.5, "observaciones": "* Dato provisorio",
+    }
+    row.update(overrides)
+    return row
+
+
+MAYORISTA = DatasetSpec(
+    slug="sipm_precios_mayoristas", slices=({},), has_region=True, order="periodo.asc",
+    code_column="codigo_apertura", indicator_column="indicador",
+)
+
+
+def test_normalize_reads_the_code_from_the_configured_column():
+    [obs] = normalize_rows(MAYORISTA, [_mayorista_row()])
+
+    assert obs["series_code"] == "15"
+    assert obs["region"] == "Total del país"
+
+
+def test_normalize_stores_the_indicator_when_the_spec_asks_for_it():
+    [obs] = normalize_rows(MAYORISTA, [_mayorista_row()])
+    assert obs["indicator"] == "IPIM"
+
+
+def test_normalize_leaves_indicator_empty_for_standard_datasets():
+    [obs] = normalize_rows(IPC, [_ipc_row()])
+    assert obs["indicator"] == ""
+
+
+def test_normalize_keeps_rows_that_only_differ_by_indicator():
+    # IPP, IPIB e IPIM comparten códigos: sin `indicador` en la clave se pisarían
+    rows = [_mayorista_row(indicador="IPIM", valor=1), _mayorista_row(indicador="IPP", valor=2)]
+
+    result = normalize_rows(MAYORISTA, rows)
+
+    assert {(o["indicator"], o["value"]) for o in result} == {("IPIM", Decimal("1")), ("IPP", Decimal("2"))}
+
+
+def test_normalize_applies_the_reshape_before_mapping():
+    spec = DatasetSpec(
+        slug="x", slices=({},), has_region=False, order="periodo.asc",
+        reshape=lambda rows: [_ipc_row(valor=r["a"]) for r in rows],
+    )
+
+    [obs] = normalize_rows(spec, [{"a": 7.5}])
+
+    assert obs["value"] == Decimal("7.5")
+
+
+def test_upsert_statement_includes_indicator_in_the_conflict_handling():
+    session = MagicMock()
+    upsert_observations(session, [dict(_obs(1), indicator="IPIM")])
+
+    sql = str(session.execute.call_args[0][0].compile(dialect=postgresql.dialect()))
+    assert "indicator" in sql

@@ -13,7 +13,10 @@ workflow `indec-sync` con `full=true`) para cargar su historia completa.
 Los filtros usan la sintaxis PostgREST de la API: `eq.<valor>` o `in.(a,b,c)`.
 Los valores fueron verificados contra el INDEC real el 2026-11-14.
 """
+from collections.abc import Callable
 from dataclasses import dataclass
+
+from app.services.indec.reshape import reshape_canasta_crianza
 
 # Claves de ordenamiento: coinciden con la restricción única de la tabla, así
 # el orden es total y la paginación no solapa ni saltea filas.
@@ -28,6 +31,11 @@ class DatasetSpec:
     slices: tuple[dict[str, str], ...]
     has_region: bool
     order: str
+    # Los datasets no son del todo homogéneos: estos campos cubren las diferencias.
+    code_column: str = "codigo"            # el mayorista lo llama `codigo_apertura`
+    period_column: str = "periodo"         # nombre en el servidor (canasta-crianza: "Periodo")
+    indicator_column: str | None = None    # si el dataset mezcla indicadores con los mismos códigos
+    reshape: Callable[[list[dict]], list[dict]] | None = None  # para formatos no estándar
 
 
 REGISTRY: dict[str, DatasetSpec] = {
@@ -68,6 +76,43 @@ REGISTRY: dict[str, DatasetSpec] = {
         ),
         has_region=False,  # el dataset no tiene columna `region`
         order=_ORDER_BASE,
+    ),
+    # Costo mensual de criar a un hijo, por tramo de edad. Viene en formato ancho.
+    "canasta-crianza": DatasetSpec(
+        slug="canasta-crianza",
+        slices=({},),  # 81 filas, todo útil
+        has_region=False,
+        order="Periodo.asc",
+        period_column="Periodo",
+        reshape=reshape_canasta_crianza,
+    ),
+    # Precios mayoristas (IPIM). El dataset completo tiene 234.260 filas de toda la
+    # industria; solo se guardan los alimentos y el nivel general, que sirven como
+    # indicador adelantado de los precios que pagan los supermercados.
+    # IPP, IPIB e IPIM comparten códigos de serie: `indicador` entra en la clave.
+    "sipm_precios_mayoristas": DatasetSpec(
+        slug="sipm_precios_mayoristas",
+        slices=(
+            {   # divisiones de agro y de alimentos y bebidas
+                "indicador": "eq.IPIM",
+                "clasificador": "eq.CIIU3",
+                "codigo_apertura": "in.(01,15)",
+                "tipo_de_indicador": "in.(Indice,v_m,v_ia,v_acum)",
+            },
+            {   # nivel general
+                "indicador": "eq.IPIM",
+                "clasificador": "eq.SIPM 93",
+                "nivel": "eq.Nivel general",
+                "tipo_de_indicador": "in.(Indice,v_m,v_ia,v_acum)",
+            },
+        ),
+        has_region=True,
+        order=(
+            "periodo.asc,indicador.asc,clasificador.asc,nivel.asc,"
+            "codigo_apertura.asc,tipo_de_indicador.asc,region.asc"
+        ),
+        code_column="codigo_apertura",
+        indicator_column="indicador",
     ),
 }
 

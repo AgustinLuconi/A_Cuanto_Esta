@@ -61,7 +61,7 @@ def sync_dataset(
     period_filter = {}
     if since is not None:
         start = since - relativedelta(months=REVISION_WINDOW_MONTHS)
-        period_filter = {"periodo": f"gte.{start:%Y%m}"}
+        period_filter = {spec.period_column: f"gte.{start:%Y%m}"}
 
     raw_rows: list[dict] = []
     for slice_ in spec.slices:

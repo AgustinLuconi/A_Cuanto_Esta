@@ -198,3 +198,14 @@ def test_main_prints_unchanged_count(capsys):
         fetch_indec_data.main([])
 
     assert "sin cambios: 7" in capsys.readouterr().out
+
+
+def test_incremental_filter_uses_the_dataset_period_column():
+    spec = DatasetSpec(slug="canasta-crianza", slices=({},), has_region=False,
+                       order="Periodo.asc", period_column="Periodo")
+    client = _client()
+    with patch(LATEST, return_value=date(2026, 9, 1)), patch(UPSERT, return_value=UpsertResult(1, 0)):
+        sync_dataset(MagicMock(), client, spec)
+
+    [params] = _fetch_params(client)
+    assert params == {"Periodo": "gte.202606"}   # no "periodo": ese dataset usa mayúscula

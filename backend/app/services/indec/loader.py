@@ -26,6 +26,7 @@ _KEY_FIELDS = (
     "level",
     "series_code",
     "region",
+    "indicator",
     "indicator_type",
     "period",
 )
@@ -62,9 +63,10 @@ def _to_observation(spec: DatasetSpec, row: dict) -> dict | None:
             "dataset": spec.slug,
             "classifier": row["clasificador"],
             "level": row["nivel"],
-            "series_code": row["codigo"],
+            "series_code": row[spec.code_column],
             "series_name": row["descripcion"],
             "region": (row.get("region") or DEFAULT_REGION) if spec.has_region else DEFAULT_REGION,
+            "indicator": (row.get(spec.indicator_column) or "") if spec.indicator_column else "",
             "indicator_type": row["tipo_de_indicador"],
             "unit": row.get("unidad_de_medida"),
             "indicator_description": row.get("tipo_de_indicador_descripcion"),
@@ -86,6 +88,8 @@ def normalize_rows(spec: DatasetSpec, rows: list[dict], *, report: bool = True) 
     descartaron y cuántas eran duplicadas: la clave única no incluye todas las
     columnas del INDEC, así que un duplicado con valor distinto es una señal.
     """
+    if spec.reshape is not None:
+        rows = spec.reshape(rows)  # datasets en formato no estándar (ej. canasta-crianza)
     by_key: dict[tuple, dict] = {}
     dropped = duplicates = conflicting = 0
     for row in rows:

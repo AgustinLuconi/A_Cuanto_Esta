@@ -42,6 +42,11 @@ class IndecObservation(Base):
     # región (ej. indice_salarios) se guardan como "Nacional".
     region = Column(String(40), nullable=False)
 
+    # Indicador de origen cuando un dataset mezcla varios con los mismos códigos de
+    # serie (mayorista: IPP / IPIB / IPIM). "" en los demás; NOT NULL para que la
+    # clave única funcione (en PostgreSQL dos NULL no cuentan como iguales).
+    indicator = Column(String(60), nullable=False, default="", server_default="")
+
     indicator_type = Column(String(60), nullable=False)   # ej. "Indice", "v_m", "v_ia"
     unit = Column(Text)                                   # ej. "Porcentaje" (texto libre del INDEC)
     # Cómo leer el valor, ej. "Valor por 390 g" en los precios promedio (la unidad
@@ -65,6 +70,7 @@ class IndecObservation(Base):
             "level",
             "series_code",
             "region",
+            "indicator",
             "indicator_type",
             "period",
             name="uq_indec_observation_key",
