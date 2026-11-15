@@ -85,7 +85,8 @@ Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de 
 | level | VARCHAR(60) | No | Nivel (ej: `Division`, `Producto`) |
 | series_code | VARCHAR(40) | No | Codigo de serie (ej: `01`, `CBA`) |
 | series_name | TEXT | No | Descripcion legible (texto libre del INDEC) |
-| region | VARCHAR(40) | No | Region; los datasets sin region se guardan como `Nacional` |
+| region | VARCHAR(40) | No | Region; los datasets sin region se guardan como `Nacional` (el mayorista usa `Total del país`) |
+| indicator | VARCHAR(60) | No | Indicador de origen cuando un dataset mezcla varios con los mismos codigos de serie (mayorista: `IPP`, `IPIB`, `IPIM`). `''` en los demas datasets |
 | indicator_type | VARCHAR(60) | No | `Indice`, `v_m`, `v_ia`, `v_acum`, `Precio promedio`... |
 | unit | TEXT | Si | Unidad de medida (texto libre del INDEC) |
 | indicator_description | TEXT | Si | Como leer el valor; en los precios promedio es la unidad de referencia (ej: `Valor por 390 g`). Las filas cargadas antes de existir esta columna se completan con la proxima sincronizacion (ultimos 3 meses) o con `--full` |
@@ -94,11 +95,11 @@ Datos oficiales del INDEC en formato largo: una fila por serie, region, tipo de 
 | notes | TEXT | Si | Observaciones del INDEC |
 | ingested_at | TIMESTAMPTZ | No | Cuando se cargo o se modifico por ultima vez (las filas sin cambios no se reescriben) |
 
-**Unicidad:** `uq_indec_observation_key` sobre `(dataset, classifier, level, series_code, region, indicator_type, period)`. `region` es NOT NULL a proposito: en PostgreSQL dos `NULL` no cuentan como iguales y el upsert duplicaria filas.
+**Unicidad:** `uq_indec_observation_key` sobre `(dataset, classifier, level, series_code, region, indicator, indicator_type, period)`. `region` e `indicator` son NOT NULL a proposito: en PostgreSQL dos `NULL` no cuentan como iguales y el upsert duplicaria filas. `indicator` es necesario porque en el mayorista 396 de 604 claves se repetian entre `IPP`, `IPIB` e `IPIM`.
 
 **Indice de lectura:** `ix_indec_observation_lookup` sobre `(dataset, series_code, region, indicator_type, period)`.
 
-**Datasets y cortes** (se definen en `backend/app/services/indec/registry.py`): `ipc_nacional`, `valorizacion_canastas_cba_cbt`, `indice_salarios`.
+**Datasets y cortes** (se definen en `backend/app/services/indec/registry.py`): `ipc_nacional`, `valorizacion_canastas_cba_cbt`, `indice_salarios`, `canasta-crianza` (viene en formato ancho; `reshape.py` la pasa a 12 series: 3 componentes x 4 tramos de edad) y `sipm_precios_mayoristas` (solo el indicador `IPIM`: agro, alimentos y bebidas y nivel general).
 
 ## Enums
 

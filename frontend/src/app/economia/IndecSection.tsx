@@ -60,7 +60,7 @@ export default function IndecSection() {
   // Solo cuenta lo que esta sección realmente muestra: con únicamente un dato
   // que no se dibuja (ej. solo el ICE), quedaría el encabezado sobre un hueco.
   const hasCards = Boolean(foodAnnual || generalAnnual || data.cba || data.cbt);
-  if (!hasCards && !data.food_vs_wages) return null;
+  if (!hasCards && !data.food_vs_wages && !data.wholesale_vs_retail && !data.child_cost) return null;
 
   // ICE = inversa del coeficiente de Engel: cuántas veces la canasta total
   // contiene a la alimentaria (2,22 -> la total vale 2,22 veces la CBA).
@@ -137,6 +137,54 @@ export default function IndecSection() {
             height={260}
             valueFmt={(v) => v.toFixed(0)}  // índice base 100, no pesos
           />
+        </div>
+      )}
+
+      {data.wholesale_vs_retail && (
+        <div className="card" style={{ padding: 22, marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h2>Alimentos: mayorista vs. consumidor</h2>
+              <div className="subtle" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2 }}>
+                Últimos 24 meses · base 100 en el primer mes · si el mayorista sube más rápido, presiona a los precios de góndola
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <LegendDot color="var(--warn)" label="Mayorista (alimentos y bebidas)" />
+              <LegendDot color="var(--bad)" label="IPC Alimentos" />
+            </div>
+          </div>
+          <DualLineChart
+            labels={data.wholesale_vs_retail.labels}
+            a={data.wholesale_vs_retail.mayorista_alimentos}
+            b={data.wholesale_vs_retail.ipc_alimentos}
+            aLabel="Mayorista"
+            bLabel="IPC Alimentos"
+            aColor="var(--warn)"
+            bColor="var(--bad)"
+            height={260}
+            valueFmt={(v) => v.toFixed(0)}  // índice base 100, no pesos
+          />
+        </div>
+      )}
+
+      {data.child_cost && data.child_cost.groups.length > 0 && (
+        <div className="card" style={{ padding: 22, marginTop: 16 }}>
+          <h2>Costo mensual de crianza</h2>
+          <div className="subtle" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 2, marginBottom: 16 }}>
+            Por tramo de edad · lo que cuesta criar a un hijo en un mes
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            {data.child_cost.groups.map((g) => (
+              <StatCard
+                key={g.label}
+                label={g.label}
+                main={"$" + fmtPrice(g.total)}
+                detail={`Bienes y servicios $${fmtPrice(g.bienes_servicios)} · Cuidado $${fmtPrice(g.cuidado)}`}
+                period={fmtPeriod(data.child_cost!.period)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

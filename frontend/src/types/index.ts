@@ -139,6 +139,25 @@ export const FoodVsWagesSchema = z.object({
 });
 export type FoodVsWages = z.infer<typeof FoodVsWagesSchema>;
 
+export const WholesaleVsRetailSchema = z.object({
+  labels: z.array(z.string()),
+  mayorista_alimentos: z.array(z.number()),
+  ipc_alimentos: z.array(z.number()),
+});
+export type WholesaleVsRetail = z.infer<typeof WholesaleVsRetailSchema>;
+
+export const ChildCostGroupSchema = z.object({
+  label: z.string(),
+  bienes_servicios: z.number(),
+  cuidado: z.number(),
+  total: z.number(),
+});
+export const ChildCostSchema = z.object({
+  period: z.string(),
+  groups: z.array(ChildCostGroupSchema),
+});
+export type ChildCost = z.infer<typeof ChildCostSchema>;
+
 // Datos oficiales del INDEC (GET /indec/overview). Todo es opcional: con la
 // tabla vacía el backend responde null en cada campo.
 export const IndecOverviewSchema = z.object({
@@ -150,6 +169,8 @@ export const IndecOverviewSchema = z.object({
   cbt: LatestPointSchema.nullable().default(null),
   ice: LatestPointSchema.nullable().default(null),
   food_vs_wages: FoodVsWagesSchema.nullable().default(null),
+  wholesale_vs_retail: WholesaleVsRetailSchema.nullable().default(null),
+  child_cost: ChildCostSchema.nullable().default(null),
 });
 export type IndecOverview = z.infer<typeof IndecOverviewSchema>;
 
