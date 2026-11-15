@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.indec_observation import IndecObservation
-from app.services.indec.queries import get_overview, get_series
+from app.services.indec.queries import build_wholesale_vs_retail, get_overview, get_series
 from app.services.indec.sync import latest_period
 
 
@@ -29,10 +29,11 @@ def db():
 
 
 def _add(db, *, dataset="ipc_nacional", classifier="IPC", level="Nivel General",
-         code="0", region="Nacional", indicator="v_m", period=date(2026, 10, 1), value=1.0):
+         code="0", region="Nacional", indicator="v_m", period=date(2026, 10, 1), value=1.0,
+         source="", name="x"):
     db.add(IndecObservation(
         dataset=dataset, classifier=classifier, level=level, series_code=code,
-        series_name="x", region=region, indicator_type=indicator, unit=None,
+        series_name=name, region=region, indicator=source, indicator_type=indicator, unit=None,
         period=period, value=Decimal(str(value)),
     ))
     db.commit()
@@ -106,3 +107,81 @@ def test_overview_builds_canastas_and_food_vs_wages(db):
     assert overview.cba.value == overview.cbt.value == overview.ice.value == 100
     assert overview.food_vs_wages.ipc_alimentos == [100.0, 110.0]
     assert overview.food_vs_wages.salarios == [100.0, 110.0]
+
+
+# ---------------------------------------------------------------------------
+# precios mayoristas vs. consumidor
+# ---------------------------------------------------------------------------
+from app.schemas.indec import WholesaleVsRetail
+
+
+def test_build_wholesale_vs_retail_rebases_both_series_to_100():
+    wholesale = {date(2026, 1, 1): 200.0, date(2026, 2, 1): 240.0}
+    retail = {date(2026, 1, 1): 50.0, date(2026, 2, 1): 55.0}
+
+    result = build_wholesale_vs_retail(wholesale, retail)
+
+    assert result == WholesaleVsRetail(
+        labels=["2026-01", "2026-02"], mayorista_alimentos=[100.0, 120.0], ipc_alimentos=[100.0, 110.0])
+
+
+def test_overview_builds_wholesale_vs_retail_from_ipim_only(db):
+    for month, (wholesale, retail) in enumerate([(100, 50), (120, 55)], start=1):
+        period = date(2026, month, 1)
+        _add(db, dataset="sipm_precios_mayoristas", classifier="CIIU3", level="División", code="15",
+             region="Total del país", indicator="Indice", source="IPIM", period=period, value=wholesale)
+        # otro indicador con el MISMO código: no debe mezclarse
+        _add(db, dataset="sipm_precios_mayoristas", classifier="CIIU3", level="División", code="15",
+             region="Total del país", indicator="Indice", source="IPP", period=period, value=999)
+        _add(db, classifier="COICOP Argentina 2019", level="División", code="01",
+             indicator="Indice", period=period, value=retail)
+
+    chart = get_overview(db).wholesale_vs_retail
+
+    assert chart.labels == ["2026-01", "2026-02"]
+    assert chart.mayorista_alimentos == [100.0, 120.0]
+    assert chart.ipc_alimentos == [100.0, 110.0]
+
+
+def test_overview_has_no_wholesale_chart_without_data(db):
+    assert get_overview(db).wholesale_vs_retail is None
+
+
+# ---------------------------------------------------------------------------
+# costo de crianza
+# ---------------------------------------------------------------------------
+AGES = {"men1": "Menor de 1 año", "1a3": "1 a 3 años", "4a5": "4 a 5 años", "6a12": "6 a 12 años"}
+
+
+def _crianza(db, period, base):
+    for age_key, age_label in AGES.items():
+        for comp, offset in (("bys", 1), ("cuid", 2), ("tot", 3)):
+            _add(db, dataset="canasta-crianza", classifier="Canasta de crianza", level=age_label,
+                 code=f"{comp}_{age_key}", region="Nacional", indicator="Canasta", period=period,
+                 value=base + offset, name=f"{comp} · {age_label}")
+
+
+def test_overview_child_cost_uses_the_latest_period_and_orders_by_age(db):
+    _crianza(db, date(2026, 8, 1), base=1000)
+    _crianza(db, date(2026, 9, 1), base=2000)
+
+    cost = get_overview(db).child_cost
+
+    assert cost.period == date(2026, 9, 1)
+    assert [g.label for g in cost.groups] == list(AGES.values())
+    first = cost.groups[0]
+    assert (first.bienes_servicios, first.cuidado, first.total) == (2001.0, 2002.0, 2003.0)
+
+
+def test_overview_child_cost_is_none_without_data(db):
+    assert get_overview(db).child_cost is None
+
+
+def test_overview_child_cost_skips_incomplete_age_groups(db):
+    _crianza(db, date(2026, 9, 1), base=2000)
+    db.query(IndecObservation).filter(IndecObservation.series_code == "tot_4a5").delete()
+    db.commit()
+
+    cost = get_overview(db).child_cost
+
+    assert [g.label for g in cost.groups] == ["Menor de 1 año", "1 a 3 años", "6 a 12 años"]

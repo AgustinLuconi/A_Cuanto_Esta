@@ -37,7 +37,7 @@ def test_series_requires_dataset(client):
 def test_series_passes_filters_to_query(client):
     url = (
         "/api/v1/indec/series?dataset=ipc_nacional&code=01&region=Nacional"
-        "&indicator=Indice&classifier=COICOP%20Argentina%202019"
+        "&indicator=Indice&classifier=COICOP%20Argentina%202019&source_indicator=IPIM"
         "&from=2026-01-01&to=2026-10-01&limit=50"
     )
     with patch(GET_SERIES, return_value=[]) as mock_query:
@@ -50,6 +50,7 @@ def test_series_passes_filters_to_query(client):
     assert kwargs["region"] == "Nacional"
     assert kwargs["indicator"] == "Indice"
     assert kwargs["classifier"] == "COICOP Argentina 2019"
+    assert kwargs["source_indicator"] == "IPIM"
     assert kwargs["date_from"] == date(2026, 1, 1)
     assert kwargs["date_to"] == date(2026, 10, 1)
     assert kwargs["limit"] == 50
@@ -65,6 +66,7 @@ def test_series_serializes_observations(client):
         dataset="ipc_nacional",
         classifier="COICOP Argentina 2019",
         level="División",
+        indicator="",
         series_code="01",
         series_name="Alimentos y bebidas no alcohólicas",
         region="Nacional",
@@ -82,6 +84,7 @@ def test_series_serializes_observations(client):
             "dataset": "ipc_nacional",
             "classifier": "COICOP Argentina 2019",
             "level": "División",
+            "indicator": "",
             "series_code": "01",
             "series_name": "Alimentos y bebidas no alcohólicas",
             "region": "Nacional",
@@ -190,3 +193,23 @@ def test_price_reference_with_no_data_returns_empty_list_not_error(client):
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_overview_serializes_wholesale_chart_and_child_cost(client):
+    from app.schemas.indec import ChildCost, ChildCostGroup, WholesaleVsRetail
+
+    overview = IndecOverview(
+        wholesale_vs_retail=WholesaleVsRetail(
+            labels=["2026-01", "2026-02"], mayorista_alimentos=[100.0, 120.0], ipc_alimentos=[100.0, 110.0]),
+        child_cost=ChildCost(period=date(2026, 9, 1), groups=[
+            ChildCostGroup(label="Menor de 1 año", bienes_servicios=1.0, cuidado=2.0, total=3.0)]),
+    )
+    with patch(GET_OVERVIEW, return_value=overview):
+        body = client.get("/api/v1/indec/overview").json()
+
+    assert body["wholesale_vs_retail"] == {
+        "labels": ["2026-01", "2026-02"], "mayorista_alimentos": [100.0, 120.0], "ipc_alimentos": [100.0, 110.0]}
+    assert body["child_cost"] == {
+        "period": "2026-09-01",
+        "groups": [{"label": "Menor de 1 año", "bienes_servicios": 1.0, "cuidado": 2.0, "total": 3.0}],
+    }

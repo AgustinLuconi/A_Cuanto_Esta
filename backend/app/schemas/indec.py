@@ -10,6 +10,7 @@ class ObservationOut(BaseModel):
     dataset: str
     classifier: str
     level: str
+    indicator: str  # indicador de origen (mayorista: IPP/IPIB/IPIM); '' si el dataset no lo usa
     series_code: str
     series_name: str
     region: str
@@ -32,6 +33,28 @@ class FoodVsWages(BaseModel):
     salarios: list[float]
 
 
+class WholesaleVsRetail(BaseModel):
+    """Precios mayoristas de alimentos vs. IPC Alimentos al consumidor, ambos en base 100."""
+
+    labels: list[str]  # "YYYY-MM"
+    mayorista_alimentos: list[float]
+    ipc_alimentos: list[float]
+
+
+class ChildCostGroup(BaseModel):
+    label: str  # tramo de edad, ej. "1 a 3 años"
+    bienes_servicios: float
+    cuidado: float
+    total: float
+
+
+class ChildCost(BaseModel):
+    """Costo mensual de criar a un hijo por tramo de edad (pesos)."""
+
+    period: date
+    groups: list[ChildCostGroup]
+
+
 class IndecOverview(BaseModel):
     """Último dato de las series que muestra la pantalla de economía.
 
@@ -47,6 +70,8 @@ class IndecOverview(BaseModel):
     cbt: LatestPoint | None = None
     ice: LatestPoint | None = None
     food_vs_wages: FoodVsWages | None = None
+    wholesale_vs_retail: WholesaleVsRetail | None = None
+    child_cost: ChildCost | None = None
 
 
 class PriceReferenceItemOut(BaseModel):
