@@ -15,10 +15,18 @@ from datetime import date
 from decimal import Decimal
 
 from app.services.indec.reference_rules import ReferenceRule
-from app.services.indec.units import Size, parse_reference_description, parse_size_from_name
+from app.services.indec.units import (
+    Size,
+    is_multipack,
+    parse_reference_description,
+    parse_size_from_name,
+)
 
 # Con menos ofertas válidas el resultado no es representativo y no se muestra
 MIN_OFFERS = 3
+# Las ofertas válidas deben venir de al menos este número de supermercados: con
+# 1 o 2, "tus supermercados" no estaría representado (es el precio de una cadena).
+MIN_SUPERMARKETS = 3
 
 # Un precio por unidad base fuera de esta banda respecto del INDEC se descarta
 # como dato roto (precios en 0,00, valores absurdos) o producto mal emparejado.
@@ -63,7 +71,7 @@ def compare_rule(
 ) -> Comparison | None:
     """
     Compara el precio del INDEC (válido para `indec_size`) con las ofertas.
-    None si quedan menos de MIN_OFFERS ofertas válidas.
+    None si quedan menos de MIN_OFFERS ofertas válidas o de MIN_SUPERMARKETS supermercados.
     """
     indec_unit = indec_price / indec_size.amount
     low, high = (indec_unit * f for f in PLAUSIBLE_BAND)
@@ -71,8 +79,11 @@ def compare_rule(
     valid: list[tuple[Offer, Decimal]] = []
     unparsed = discarded = 0
     for offer in offers:
-        size = parse_size_from_name(f"{offer.name} {offer.quantity or ''}")
-        if size is None or size.kind != indec_size.kind:
+        if is_multipack(offer.name, allow_count=indec_size.kind == "count"):
+            unparsed += 1  # el precio es por varias unidades: no es comparable
+            continue
+        size = parse_size_from_name(f"{offer.name} {offer.quantity or ''}", kind=indec_size.kind)
+        if size is None:
             unparsed += 1
             continue
         unit_price = offer.price / size.amount
@@ -83,7 +94,7 @@ def compare_rule(
             continue
         valid.append((offer, unit_price))
 
-    if len(valid) < MIN_OFFERS:
+    if len(valid) < MIN_OFFERS or len({o.supermarket for o, _ in valid}) < MIN_SUPERMARKETS:
         return None
 
     prices = [p for _, p in valid]

@@ -21,6 +21,7 @@ from app.services.indec.reference_rules import RULES
 
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
 AZUCAR = next(r for r in RULES if r.label == "Azúcar")
+SUPERMARKETS = [Supermarket.COTO, Supermarket.DIA, Supermarket.JUMBO]  # el cruce exige 3
 
 
 @pytest.fixture
@@ -109,7 +110,7 @@ def test_fetch_indec_points_skips_rows_without_description(db):
 def test_get_price_reference_end_to_end_and_cached(db):
     _indec(db, AZUCAR.indec_code, 1600, "Valor por kg", date(2026, 10, 1))
     for i, price in enumerate((1500, 1600, 1700)):
-        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), price)
+        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), price, sm=SUPERMARKETS[i])
 
     first = q.get_price_reference(db, now=NOW)
 
@@ -128,7 +129,7 @@ def test_get_price_reference_recomputes_after_the_cache_expires(db):
     assert first == []   # todavía sin ofertas
 
     for i in range(3):
-        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), 1600)
+        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), 1600, sm=SUPERMARKETS[i])
     later = q.get_price_reference(db, now=NOW + q.CACHE_TTL + timedelta(seconds=1))
 
     assert len(later) == 1
@@ -141,7 +142,7 @@ def test_an_empty_result_is_only_cached_briefly(db):
     assert q.get_price_reference(db, now=NOW) == []
 
     for i in range(3):
-        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), 1600)
+        _price(db, _product(db, f"Azúcar {i} 1kg", f"azucar {i} 1kg"), 1600, sm=SUPERMARKETS[i])
 
     # Dentro del vencimiento corto sigue el resultado vacío cacheado...
     assert q.get_price_reference(db, now=NOW + q.EMPTY_CACHE_TTL - timedelta(seconds=1)) == []

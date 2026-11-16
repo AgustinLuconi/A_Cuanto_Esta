@@ -6,8 +6,22 @@ equivalen al artículo del INDEC. Se prefiere NO emparejar a emparejar mal: el
 nombre debe EMPEZAR con el artículo (así "azúcar" no trae "gaseosa sin azúcar")
 y se excluyen variantes que el INDEC no mide (orgánico, light, integral...).
 
-No cubiertos por falta de productos en el catálogo (al 2026-11-14): yerba mate,
-café molido y sal fina. Las reglas se agregan cuando haya al menos 3 ofertas.
+Criterio para sumar un artículo: producto homogéneo (poca diferencia entre marcas) y,
+al evaluarlo con datos reales, al menos 4 productos equivalentes en 3 o más
+supermercados. Si el INDEC mide una variedad que no se puede recuperar del nombre
+de los productos, la comparación engañaría y se deja afuera.
+
+Artículos del INDEC SIN regla, y por qué (revisado el 2026-11-15):
+- Sin productos en el catálogo (los scrapers no los capturan): frutas, verduras,
+  huevos, pan, yerba, café, sal, legumbres en lata y casi todas las carnes (1 a 5
+  productos por corte, de 1 o 2 supermercados, con cortes distintos bajo el mismo
+  nombre). Ampliar el cruce a estos artículos requiere ampliar los scrapers.
+- Con marcas muy diferenciadas, donde el INDEC no informa cuál mide: cerveza,
+  champú, desodorante, jabón de tocador, pañales y detergente (el catálogo trae
+  concentrados y geles, no el detergente básico); agua (mezcla envases de 591 ml a
+  6 L y aguas premium).
+- Con ofertas de menos de 3 supermercados (el cruce lo exige en `price_reference.py`):
+  hamburguesas, leche en polvo, queso pategrás y sardo, dulce de leche.
 
 Para sumar un artículo: agregar una `ReferenceRule` con el código del INDEC
 (columna `series_code` de `indec_observations`, indicador "Precio promedio").
@@ -58,4 +72,10 @@ RULES: tuple[ReferenceRule, ...] = (
     _rule("05.6.1.1.12", "Lavandina", r"^lavandina\b", r"\bgel\b|pastilla|tableta|polvo"),
     _rule("01.2.2.1.04", "Gaseosa cola (Coca-Cola y Pepsi)", r"^(gaseosa )?(coca[ -]?cola|pepsi)\b",
           r"zero|liviano|light|sin azucar|diet|vainilla|cherry|cereza|limon|lima|\blata\b|mini|\bx ?(6|12)\b|pack|\bsin\b|mix|sabor"),
+    _rule("01.1.1.2.04", "Galletitas de agua", r"^galletit\w* (de )?agua\b|^galletit\w* crackers?\b",
+          r"integral|sin tacc|light|salvado|sabor|queso|semilla|dulce"),
+    _rule("01.1.1.2.05", "Galletitas dulces", r"^galletit\w* (dulces?|vainilla|maizena)\b",
+          r"integral|sin tacc|light|rellen|chocolate|obleas|surtid|crackers"),
+    _rule("01.1.4.2.03", "Queso cremoso", r"^queso cremoso\b",
+          r"light|untable|rallado|barra|fundido|mozzarella|port salut|\bcon\b"),
 )

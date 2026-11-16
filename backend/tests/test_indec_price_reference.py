@@ -2,11 +2,12 @@
 Pruebas del cruce de precios: precio promedio del INDEC vs. ofertas de los
 supermercados, normalizadas a precio por kg / litro / unidad.
 """
+import itertools
 from decimal import Decimal
 
 import pytest
 
-from app.services.indec.price_reference import MIN_OFFERS, Offer, compare_rule
+from app.services.indec.price_reference import MIN_OFFERS, MIN_SUPERMARKETS, Offer, compare_rule
 from app.services.indec.units import Size
 
 KG = Size("mass", Decimal("1"))
@@ -14,8 +15,13 @@ KG = Size("mass", Decimal("1"))
 INDEC_PRICE = Decimal("1600")
 
 
-def _offer(name, price, sm="COTO", pid=None):
-    return Offer(product_id=pid or name, name=name, supermarket=sm, price=Decimal(str(price)))
+_SUPERMARKETS = itertools.cycle(["COTO", "DIA", "JUMBO"])
+
+
+def _offer(name, price, sm=None, pid=None):
+    # Por defecto cada oferta es de un supermercado distinto: el cruce exige varios.
+    return Offer(product_id=pid or name, name=name, supermarket=sm or next(_SUPERMARKETS),
+                 price=Decimal(str(price)))
 
 
 def test_compares_median_unit_price_against_indec():
@@ -106,20 +112,20 @@ def test_counts_distinct_products_and_supermarkets():
     offers = [
         _offer("Azúcar A 1kg", 1500, sm="COTO", pid="a"),
         _offer("Azúcar A 1kg", 1550, sm="DIA", pid="a"),
-        _offer("Azúcar B 1kg", 1600, sm="COTO", pid="b"),
+        _offer("Azúcar B 1kg", 1600, sm="JUMBO", pid="b"),
     ]
 
     result = compare_rule(INDEC_PRICE, KG, offers)
 
     assert result.n_offers == 3
-    assert result.n_products == 2
-    assert result.n_supermarkets == 2
+    assert result.n_products == 2          # el producto A está en 2 supermercados
+    assert result.n_supermarkets == 3
 
 
 def test_count_kind_uses_units():
     # Huevos: INDEC por docena (12 u) a $4.800 -> $400/u
     dozen = Size("count", Decimal("12"))
-    offers = [_offer(f"Huevos {i} x12 unidades", 4800) for i in range(3)]
+    offers = [_offer(f"Huevos Marca{b} x12 unidades", 4800) for b in "ABC"]
 
     result = compare_rule(Decimal("4800"), dozen, offers)
 
@@ -158,9 +164,9 @@ from app.services.indec.reference_rules import ReferenceRule
 SAL_RULE = ReferenceRule(indec_code="X1", label="Sal", include=re.compile(r"^sal\b"))
 
 
-def _named(name, price, sm="COTO", pid=None):
-    return Offer(product_id=pid or name, name=name, supermarket=sm, price=Decimal(str(price)),
-                 normalized_name=name.lower())
+def _named(name, price, sm=None, pid=None):
+    return Offer(product_id=pid or name, name=name, supermarket=sm or next(_SUPERMARKETS),
+                 price=Decimal(str(price)), normalized_name=name.lower())
 
 
 def test_assemble_expresses_everything_in_the_reference_size():
@@ -205,3 +211,40 @@ def test_assemble_skips_rules_with_too_few_offers():
     points = {"X1": IndecPoint("X1", Decimal("1000"), "Valor por kg", date(2026, 10, 1))}
 
     assert assemble_price_reference((SAL_RULE,), points, [_named("Sal 1kg", 1000)]) == []
+
+
+def test_uses_the_indec_kind_to_resolve_names_with_two_sizes():
+    # INDEC: hamburguesas "por Env. 4 u". El nombre trae 4 U y 400 g: se toma 4 U.
+    four = Size("count", Decimal("4"))
+    offers = [_offer(f"Hamburguesas {b} 4 U 400 g", 8000) for b in "ABC"]
+
+    result = compare_rule(Decimal("8000"), four, offers)
+
+    assert result.n_offers == 3
+    assert result.ours_median == Decimal("2000")  # $/unidad
+
+
+def test_multipacks_are_not_compared_as_single_items():
+    offers = [
+        _offer("Azúcar A 1kg", 1500), _offer("Azúcar B 1kg", 1600), _offer("Azúcar C 1kg", 1700),
+        _offer("Azúcar pack 3 x 1kg", 4500),   # precio de 3 kg: no es comparable
+    ]
+
+    result = compare_rule(INDEC_PRICE, KG, offers)
+
+    assert result.n_offers == 3
+    assert result.n_unparsed == 1
+
+
+def test_returns_none_when_valid_offers_come_from_too_few_supermarkets():
+    # Muchas ofertas, pero de solo 2 supermercados: "los supermercados" no estaría representado
+    offers = [_offer(f"Azúcar {i} 1kg", 1600, sm=("COTO" if i % 2 else "DIA")) for i in range(8)]
+    assert len({o.supermarket for o in offers}) == MIN_SUPERMARKETS - 1
+
+    assert compare_rule(INDEC_PRICE, KG, offers) is None
+
+
+def test_accepts_the_minimum_number_of_supermarkets():
+    offers = [_offer(f"Azúcar {i} 1kg", 1600, sm=sm) for i, sm in enumerate(["COTO", "DIA", "JUMBO"])]
+
+    assert compare_rule(INDEC_PRICE, KG, offers).n_supermarkets == MIN_SUPERMARKETS
