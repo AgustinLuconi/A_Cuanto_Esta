@@ -33,7 +33,8 @@ _UNITS: dict[str, tuple[Kind, Decimal]] = {
     "ml": ("volume", Decimal("0.001")), "cc": ("volume", Decimal("0.001")),
     "cm3": ("volume", Decimal("0.001")),
     "u": ("count", Decimal("1")), "un": ("count", Decimal("1")),
-    "unid": ("count", Decimal("1")), "unidad": ("count", Decimal("1")),
+    "uni": ("count", Decimal("1")), "unid": ("count", Decimal("1")),
+    "unids": ("count", Decimal("1")), "unidad": ("count", Decimal("1")),
     "unidades": ("count", Decimal("1")),
     "docena": ("count", Decimal("12")),
 }
@@ -73,13 +74,33 @@ def parse_reference_description(text: str | None) -> Size | None:
     return None
 
 
-def parse_size_from_name(name: str | None) -> Size | None:
+def parse_size_from_name(name: str | None, kind: Kind | None = None) -> Size | None:
     """
     Tamaño que figura en el nombre de un producto, en unidades base. None si no
     hay tamaño o si hay dos distintos (mejor no adivinar).
+
+    Con `kind` solo se consideran los tamaños de ese tipo: así "Hamburguesas 4 U
+    400 g" se resuelve a 4 unidades o a 0,4 kg según lo que se esté comparando.
     """
     if not name:
         return None
     sizes = {_to_size(m.group(1), m.group(2)) for m in _NUMBER_UNIT.finditer(name)}
     sizes |= {_to_size("1", m.group(1)) for m in _BARE_UNIT.finditer(name)}
-    return sizes.pop() if len(sizes) == 1 else None
+    if kind is not None:
+        sizes = {s for s in sizes if s.kind == kind}
+    return next(iter(sizes)) if len(sizes) == 1 else None
+
+
+# Multipacks y promociones: el precio es por varias unidades y el nombre solo
+# trae el tamaño de una ("3 x 125 g", "pack x 2", "2x1", "combo").
+_MULTIPACK = re.compile(r"\bpack\b|\bcombo\b|\bpromo(?:cion)?\b|\b\d+\s*[x×]\s*\d", re.IGNORECASE)
+# "x 4 unidades": multipack para pesos y litros, pero para un artículo que se mide
+# en unidades (huevos, pañales) la cantidad ES el tamaño.
+_UNIT_COUNT_PACK = re.compile(r"\b[x×]\s*\d{1,3}\s*(?:u|un|uni|unid|unids|unidades)\b", re.IGNORECASE)
+
+
+def is_multipack(name: str, *, allow_count: bool = False) -> bool:
+    """True si el nombre describe un multipack o una promoción; su precio no es el de una unidad."""
+    if _MULTIPACK.search(name):
+        return True
+    return not allow_count and bool(_UNIT_COUNT_PACK.search(name))

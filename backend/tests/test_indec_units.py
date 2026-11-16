@@ -66,3 +66,72 @@ def test_parse_size_from_name_returns_none_when_ambiguous():
 def test_parse_size_from_name_ignores_repeated_same_size():
     # "1kg" en el nombre y en el campo quantity no es ambigüedad
     assert parse_size_from_name("Azúcar La Campechana 1kg 1kg") == Size("mass", Decimal("1"))
+
+
+# ---------------------------------------------------------------------------
+# preferencia de tipo: "Hamburguesas 4 U 400 g" trae dos tamaños de tipos distintos
+# ---------------------------------------------------------------------------
+from app.services.indec.units import is_multipack
+
+
+def test_parse_size_picks_the_requested_kind_when_the_name_has_several():
+    name = "Hamburguesas Paty Clásicas 4 U 400 g"
+
+    assert parse_size_from_name(name) is None                                   # ambiguo sin preferencia
+    assert parse_size_from_name(name, kind="count") == Size("count", Decimal("4"))
+    assert parse_size_from_name(name, kind="mass") == Size("mass", Decimal("0.4"))
+
+
+def test_parse_size_with_kind_still_rejects_two_sizes_of_that_kind():
+    assert parse_size_from_name("Aceite 900 ml pack 2 x 1 L", kind="volume") is None
+
+
+def test_parse_size_with_kind_returns_none_when_that_kind_is_absent():
+    assert parse_size_from_name("Azúcar 1kg", kind="volume") is None
+
+
+def test_parse_size_resolves_a_mixed_unit_name_by_kind():
+    assert parse_size_from_name("Lavandina Limpialin Clasica 25g 4lt", kind="volume") == Size("volume", Decimal("4"))
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Jabón de tocador Rexona 3 x 125 g",
+        "Shampoo Pantene pack x 2",
+        "Gaseosa Coca Cola 1.5 L pack x6",
+        "Galletitas Oreo promo 2x1",
+        "Cerveza Quilmes combo 6 latas",
+        "Yogur Ilolay x 4 unidades",
+    ],
+)
+def test_is_multipack_detects_bundles(name):
+    assert is_multipack(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Harina de Trigo 0000 Pureza x 1000 g.",
+        "Arroz Yamaní Gallo X500 Gr",
+        "Aceite de girasol Pureza 1500 cc.",
+        "Hamburguesas Paty Clásicas 4 U 400 g",     # 4 U es el envase estándar, no un multipack
+        "Leche Entera 1 Lts Manfrey",
+    ],
+)
+def test_is_multipack_leaves_regular_products_alone(name):
+    assert not is_multipack(name)
+
+
+@pytest.mark.parametrize(
+    "name, kind, expected",
+    [
+        ("Hamburguesas PATY 4 Uni X 80 Gr Clásicas", "count", Size("count", Decimal("4"))),
+        ("Hamburguesas PATY 4 Uni X 80 Gr Clásicas", "mass", Size("mass", Decimal("0.08"))),
+        ("Hamburguesa . Swift Fwp 2 Uni", "count", Size("count", Decimal("2"))),
+        ("Pañales Huggies Classic talle P 48 uni", "count", Size("count", Decimal("48"))),
+        ("Hamburguesas Medianas X4 U. UNION Ganadera 276 g", "count", Size("count", Decimal("4"))),
+    ],
+)
+def test_parse_size_recognizes_uni_as_a_count_unit(name, kind, expected):
+    assert parse_size_from_name(name, kind=kind) == expected
