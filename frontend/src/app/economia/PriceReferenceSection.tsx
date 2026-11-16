@@ -45,7 +45,7 @@ export default function PriceReferenceSection() {
             <div className="pr-mobile-label">Supermercados</div>
             <div className="mono" style={{ fontWeight: 600 }}>${fmtPrice(item.ours_median)}</div>
             <div className="subtle" style={{ fontSize: 12 }}>
-              mitad central ${fmtPrice(item.ours_p25)}–${fmtPrice(item.ours_p75)} · {item.n_products} productos
+              mitad central ${fmtPrice(item.ours_p25)}–${fmtPrice(item.ours_p75)} · {item.n_products} productos en {item.n_supermarkets} supermercados
             </div>
           </div>
           <div className="pr-diff">
@@ -56,7 +56,8 @@ export default function PriceReferenceSection() {
 
       <div className="subtle" style={{ fontSize: 12, color: "var(--fg-3)", marginTop: 14 }}>
         Orientativo: el INDEC mide un promedio genérico por artículo y los supermercados venden muchas marcas y tamaños.
-        Solo se muestran artículos con al menos 3 ofertas equivalentes. Fuente: INDEC y precios de los supermercados de la app.
+        Solo se muestran artículos con al menos 3 ofertas equivalentes de 3 supermercados distintos, por eso faltan frutas, verduras,
+        carnes y otros que el catálogo todavía no cubre. Fuente: INDEC y precios de los supermercados de la app.
       </div>
     </div>
   );

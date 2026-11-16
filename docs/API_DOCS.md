@@ -134,7 +134,8 @@ Cruce de precios: precio promedio oficial del INDEC (GBA) contra la mediana de l
 
 - Los productos equivalentes se eligen con reglas explicitas por articulo (`backend/app/services/indec/reference_rules.py`) y se normalizan a precio por kg / litro / unidad.
 - Solo cuentan ofertas frescas (ultimas 72 hs), en stock, con precio > 0, de un envase entre 0,5x y 2x el tamano de referencia y con un precio por unidad plausible (0,2x a 5x el del INDEC).
-- Un articulo se incluye solo con al menos 3 ofertas validas. Sin datos suficientes devuelve `[]`. El resultado se cachea 30 minutos.
+- Un articulo se incluye solo con al menos 3 ofertas validas de 3 supermercados distintos (con 1 o 2 no estaria representado "los supermercados"). Sin datos suficientes devuelve `[]`. El resultado se cachea 30 minutos (1 minuto si esta vacio).
+- Hoy cubre 12 articulos (al 2026-11-15). El catalogo no tiene frutas, verduras, huevos, pan ni casi carnes, y los productos de marcas muy diferenciadas (cerveza, champu, panales...) se dejan afuera a proposito: ver `reference_rules.py`.
 
 Respuesta: lista de `{code, label, reference_unit, indec_period, indec_price, ours_median, ours_p25, ours_p75, diff_pct, n_offers, n_products, n_supermarkets}`. `ours_p25`-`ours_p75` es la mitad central de las ofertas y `diff_pct` es una fraccion (0.1 = los supermercados un 10% mas caros que el INDEC).
 
